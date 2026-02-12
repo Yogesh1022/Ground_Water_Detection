@@ -5,9 +5,9 @@
 
 ---
 
-## 1. The 22-Parameter Dataset (Backend Input)
+## 1. The 26-Parameter Dataset (Backend Input)
 
-To train the machine learning models (XGBoost/LSTM), the system requires exactly **22 data columns**. These parameters capture the hydrological cycle, from rainfall to percolation delay.
+To train the machine learning models (XGBoost/LSTM), the system requires exactly **26 data columns**. These parameters capture the hydrological cycle, terrain characteristics, vegetation health, and rainfall-to-percolation delay.
 
 ### A. Target Variable (Output Label)
 | # | Parameter Name | Data Type | Unit | Description |
@@ -57,11 +57,19 @@ To train the machine learning models (XGBoost/LSTM), the system requires exactly
 | 21 | **`latitude`** | Float | GPS Latitude (Required for spatial interpolation). |
 | 22 | **`longitude`** | Float | GPS Longitude (Required for spatial interpolation). |
 
+### G. Terrain & Vegetation Features (Geophysical)
+| # | Parameter Name | Data Type | Source | Description |
+|:--|:---------------|:----------|:-------|:------------|
+| 23 | **`elevation_m`** | Float | SRTM (30m DEM) | Elevation above sea level in meters. Higher elevation = deeper water table. |
+| 24 | **`slope_degree`** | Float | Derived from SRTM DEM | Terrain slope in degrees. Steep slopes = higher runoff, less infiltration. |
+| 25 | **`soil_type_encoded`** | Integer | FAO Soil Map / ISRO NBSS | Encoded soil classification (0=Alluvial, 1=Black Cotton, 2=Laterite, 3=Red, 4=Sandy). Controls percolation rate. |
+| 26 | **`ndvi`** | Float | MODIS (MOD13Q1, 250m) | Normalized Difference Vegetation Index (−1 to +1). Higher NDVI = more vegetation = higher transpiration water loss. |
+
 ---
 
 ## 2. User-Facing Output Specification (Frontend)
 
-While the backend processes 22 parameters, the user (farmer/official) sees only **3 simplified outputs**.
+While the backend processes 26 parameters, the user (farmer/official) sees only **3 simplified outputs**.
 
 ### Output 1: Visual Status (Risk Color)
 *Logic based on predicted depth `d` (in meters).*
@@ -123,4 +131,7 @@ This logic enables the "Check My Location" feature without requiring the user to
 | **Groundwater Levels** | India-WRIS (Government Portal) | Free |
 | **Rainfall & Weather** | Open-Meteo API / CHIRPS | Free |
 | **Soil & Moisture** | NASA POWER API | Free |
+| **Elevation & Slope** | SRTM 30m DEM (NASA Earthdata) | Free |
+| **Vegetation Index (NDVI)** | MODIS MOD13Q1 (Google Earth Engine) | Free |
+| **Soil Type** | FAO Digital Soil Map / ISRO NBSS&LUP | Free |
 | **Map Boundaries** | DataMeet (GitHub) | Free |

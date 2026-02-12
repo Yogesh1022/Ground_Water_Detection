@@ -178,7 +178,7 @@ PROBLEMS:
 │                           ▼                                        │
 │   ┌──────────────────────────────────────────────────────┐       │
 │   │           FEATURE ENGINEERING + ML/DL ENGINE          │       │
-│   │  22 features │ XGBoost │ LSTM │ GRU │ Ensemble        │       │
+│   │  26 features │ XGBoost │ LSTM │ GRU │ Ensemble        │       │
 │   │  Predicts groundwater depth 60–90 DAYS in advance     │       │
 │   └───────────────────────┬──────────────────────────────┘       │
 │                           │                                        │
@@ -266,7 +266,7 @@ PROBLEMS:
 | # | Item | Description |
 |---|------|-------------|
 | 1 | Data collection pipeline | Automated scripts to fetch data from India-WRIS, CHIRPS, NASA POWER, Open-Meteo |
-| 2 | Feature engineering | 22-column dataset with lag, rolling, stress, temporal, and geospatial features |
+| 2 | Feature engineering | 26-column dataset with lag, rolling, stress, temporal, geospatial, and terrain features |
 | 3 | ML model training | XGBoost, Random Forest, VAR (3 models) |
 | 4 | DL model training | LSTM, GRU, 1D-CNN, CNN-LSTM hybrid (4 models) |
 | 5 | Ensemble model | Weighted combination of ML + DL predictions |
@@ -328,15 +328,15 @@ PROBLEMS:
 | FR-D01 | Automated data ingestion | HIGH | System shall automatically fetch groundwater, rainfall, weather, and soil data from external APIs monthly |
 | FR-D02 | Data cleaning pipeline | HIGH | System shall handle missing values (forward-fill for depth, interpolation for weather), remove outliers (depth < 0 or > 500m), and standardize formats |
 | FR-D03 | Feature engineering | HIGH | System shall compute 12 derived features (lag, rolling, deficit, stress, temporal, geospatial) from 10 raw inputs |
-| FR-D04 | Data validation | HIGH | System shall validate that processed dataset has exactly 22 columns with correct data types before model input |
+| FR-D04 | Data validation | HIGH | System shall validate that processed dataset has exactly 26 columns with correct data types before model input |
 | FR-D05 | Data storage | MEDIUM | System shall store raw, processed, and prediction data in organized directory structure |
 
 ### 8.2 ML/DL Prediction Engine
 
 | ID | Requirement | Priority | Description |
 |----|-------------|----------|-------------|
-| FR-M01 | ML model training | HIGH | System shall train XGBoost, Random Forest, and VAR models on tabular 22-feature dataset |
-| FR-M02 | DL model training | HIGH | System shall train LSTM, GRU, 1D-CNN, and CNN-LSTM models on 3D sequential data (12 timesteps × 21 features) |
+| FR-M01 | ML model training | HIGH | System shall train XGBoost, Random Forest, and VAR models on tabular 26-feature dataset |
+| FR-M02 | DL model training | HIGH | System shall train LSTM, GRU, 1D-CNN, and CNN-LSTM models on 3D sequential data (12 timesteps × 25 features) |
 | FR-M03 | Ensemble prediction | HIGH | System shall combine ML + DL predictions using optimized weighted average for final output |
 | FR-M04 | Model selection | MEDIUM | System shall allow user to choose which model to use for prediction (XGBoost, LSTM, Ensemble, etc.) |
 | FR-M05 | Model explainability | MEDIUM | System shall generate SHAP-based feature importance rankings for XGBoost and Random Forest |
@@ -347,7 +347,7 @@ PROBLEMS:
 
 | ID | Requirement | Priority | Description |
 |----|-------------|----------|-------------|
-| FR-A01 | Single prediction endpoint | HIGH | `/predict` — accepts 21 features as JSON, returns predicted depth (m + ft), risk level, advice |
+| FR-A01 | Single prediction endpoint | HIGH | `/predict` — accepts 25 features as JSON, returns predicted depth (m + ft), risk level, advice |
 | FR-A02 | GPS prediction endpoint | HIGH | `/predict/gps` — accepts lat/lon, finds nearest wells via KNN, interpolates features via IDW, fetches live weather, returns prediction |
 | FR-A03 | Batch prediction endpoint | MEDIUM | `/predict/batch` — accepts array of feature sets, returns array of predictions |
 | FR-A04 | Well data endpoint | MEDIUM | `/api/wells` — returns all monitored well locations with latest depth and risk status |
@@ -448,7 +448,7 @@ PROBLEMS:
 | **Actor** | Farmer / Government Official |
 | **Precondition** | User has access to dashboard, knows district and approximate weather data |
 | **Trigger** | User navigates to Prediction page |
-| **Main Flow** | 1. User selects district from dropdown<br>2. User selects target month<br>3. User enters rainfall (mm), temperature (°C), humidity (%)<br>4. User selects model (XGBoost / LSTM / Ensemble)<br>5. User clicks "Predict"<br>6. System computes 22-feature vector (lag features from historical database)<br>7. System runs selected model<br>8. System returns: depth (m + ft), risk level + color, actionable advice |
+| **Main Flow** | 1. User selects district from dropdown<br>2. User selects target month<br>3. User enters rainfall (mm), temperature (°C), humidity (%)<br>4. User selects model (XGBoost / LSTM / Ensemble)<br>5. User clicks "Predict"<br>6. System computes 26-feature vector (lag features from historical database)<br>7. System runs selected model<br>8. System returns: depth (m + ft), risk level + color, actionable advice |
 | **Postcondition** | Prediction displayed on screen, saved to prediction history |
 | **Alternate Flow** | A1: If required fields are empty → show validation error<br>A2: If API is unreachable → show cached prediction warning |
 | **Exception** | E1: Model file not found → return HTTP 500 with descriptive error |
@@ -464,7 +464,7 @@ PROBLEMS:
 | **Actor** | Farmer (on mobile phone) |
 | **Precondition** | User is physically located in or near Vidarbha region |
 | **Trigger** | User clicks "Use My Location" button on Map page |
-| **Main Flow** | 1. Browser requests GPS permission<br>2. User grants permission<br>3. System captures latitude, longitude, accuracy<br>4. System sends coordinates to `/predict/gps` API<br>5. Backend finds 5 nearest monitored wells (KNN + Haversine distance)<br>6. Backend interpolates lag features using IDW from neighbor wells<br>7. Backend fetches live weather from Open-Meteo API for user's coordinates<br>8. Backend assembles 21-feature vector<br>9. Backend runs ensemble model<br>10. System returns: depth (m + ft), risk level, confidence %, nearest well distance<br>11. Frontend displays result card on map at user's location |
+| **Main Flow** | 1. Browser requests GPS permission<br>2. User grants permission<br>3. System captures latitude, longitude, accuracy<br>4. System sends coordinates to `/predict/gps` API<br>5. Backend finds 5 nearest monitored wells (KNN + Haversine distance)<br>6. Backend interpolates lag features using IDW from neighbor wells<br>7. Backend fetches live weather from Open-Meteo API for user's coordinates<br>8. Backend assembles 25-feature vector<br>9. Backend runs ensemble model<br>10. System returns: depth (m + ft), risk level, confidence %, nearest well distance<br>11. Frontend displays result card on map at user's location |
 | **Postcondition** | User sees prediction pinned to their location on map |
 | **Alternate Flow** | A1: GPS permission denied → prompt manual lat/lon entry<br>A2: No wells within 50 km → show "Outside coverage area" message<br>A3: Open-Meteo API down → use last available weather data with warning |
 | **Exception** | E1: GPS accuracy > 5 km → show warning about low accuracy |
@@ -655,7 +655,7 @@ India-WRIS ──►┐
               │
 CHIRPS ──────►┤                 ┌─────────────┐
               ├──► Data Merge ──► Feature Eng. │
-NASA POWER ──►┤    & Clean      │ (22 columns) │
+NASA POWER ──►┤    & Clean      │ (26 columns) │
               │                 └──────┬──────┘
 Open-Meteo ──►┘                        │
                                        ▼
@@ -724,7 +724,7 @@ Grant Permission
                                               │◄────────────────────┘
                                               │            { temp: 32°C,
                                          Assemble           rain: 15mm,
-                                         21 features        humidity: 65% }
+                                         25 features        humidity: 65% }
                                               │
                                          Run Ensemble
                                          Model
@@ -750,7 +750,7 @@ location
 
 ## 13. Data Requirements
 
-### 13.1 Complete Dataset Schema (22 Columns)
+### 13.1 Complete Dataset Schema (26 Columns)
 
 | # | Column | Type | Source | Raw/Derived |
 |---|--------|------|--------|-------------|
@@ -776,6 +776,10 @@ location
 | 20 | `district_encoded` | int8 | Derived | label encoding |
 | 21 | `latitude` | float64 | India-WRIS | Raw |
 | 22 | `longitude` | float64 | India-WRIS | Raw |
+| 23 | `elevation_m` | float32 | SRTM 30m DEM | Raw |
+| 24 | `slope_degree` | float32 | Derived from DEM | Derived |
+| 25 | `soil_type_encoded` | int8 | FAO / ISRO NBSS | Raw (encoded) |
+| 26 | `ndvi` | float32 | MODIS MOD13Q1 | Raw |
 
 ### 13.2 Data Volume
 
@@ -912,7 +916,7 @@ location
 
 | # | Dependency | Depends On | Impact if Delayed |
 |---|-----------|-----------|-------------------|
-| D8 | Feature Engineering | Clean merged dataset | Cannot create 22-column dataset → all model training blocked |
+| D8 | Feature Engineering | Clean merged dataset | Cannot create 26-column dataset → all model training blocked |
 | D9 | DL Model Training | Feature-engineered + normalized data | Cannot train LSTM/GRU → ensemble incomplete |
 | D10 | FastAPI Endpoints | Saved ML/DL models | Cannot serve predictions → React frontend has no backend |
 | D11 | React Map Page | FastAPI `/api/wells` endpoint | Cannot plot wells on map → map page non-functional |

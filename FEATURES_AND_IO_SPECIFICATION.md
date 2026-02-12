@@ -12,6 +12,8 @@ This document provides a complete specification of all features (inputs), target
 │  • Historical groundwater levels (lag features)                      │
 │  • Rainfall patterns (current + 3-month lags)                        │
 │  • Soil moisture, temperature, humidity                              │
+│  • Terrain: elevation, slope, soil type                              │
+│  • Vegetation health: NDVI (satellite-derived)                       │
 │  • Geospatial coordinates (lat, lon)                                 │
 │  • Temporal features (month, season, year)                           │
 └────────────────────────────────┬────────────────────────────────────┘
@@ -109,10 +111,19 @@ After predicting the continuous depth value, we classify into risk levels:
 | **`longitude`** | Well/Village longitude | Decimal Degrees | India-WRIS | ⭐⭐⭐ |
 | **`district_encoded`** | District ID (Label Encoded) | 0 - 10 | Label Encoding | ⭐⭐⭐ |
 
-### 3.5 Total Feature Count
+### 3.5 Terrain & Vegetation Features (Geophysical)
 
-**For ML Models (Tabular):** 19 features  
-**For DL Models (Sequential):** Same 19 features, but reshaped as sequences (12 timesteps × 19 features)
+| Feature Name | Description | Unit | Source | Importance |
+|--------------|-------------|------|--------|------------|
+| **`elevation_m`** | Elevation above sea level | Meters | SRTM 30m DEM | ⭐⭐⭐⭐ |
+| **`slope_degree`** | Terrain slope | Degrees | Derived from SRTM DEM | ⭐⭐⭐ |
+| **`soil_type_encoded`** | Soil classification (label encoded) | 0–4 | FAO Soil Map / ISRO NBSS | ⭐⭐⭐⭐ |
+| **`ndvi`** | Normalized Difference Vegetation Index | −1 to +1 | MODIS MOD13Q1 (250m) | ⭐⭐⭐ |
+
+### 3.6 Total Feature Count
+
+**For ML Models (Tabular):** 23 features  
+**For DL Models (Sequential):** Same 23 features, but reshaped as sequences (12 timesteps × 23 features)
 
 ---
 
@@ -169,7 +180,7 @@ df['cumulative_deficit'] = df.groupby('well_id')['rainfall_deficit'].cumsum()
 
 ```
 Shape: (n_samples, n_features)
-Example: (45,000 samples, 19 features)
+Example: (45,000 samples, 23 features)
 
 Columns:
   - rainfall_mm, rainfall_lag_1m, rainfall_lag_2m, rainfall_lag_3m,
@@ -179,7 +190,8 @@ Columns:
   - temp_rainfall_ratio,
   - depth_lag_1q, depth_lag_2q, depth_change_rate,
   - month, season_encoded, district_encoded,
-  - latitude, longitude
+  - latitude, longitude,
+  - elevation_m, slope_degree, soil_type_encoded, ndvi
 
 Target:
   - depth_mbgl
@@ -189,13 +201,13 @@ Target:
 
 ```
 Shape: (n_samples, timesteps, n_features)
-Example: (44,988 samples, 12 timesteps, 19 features)
+Example: (44,988 samples, 12 timesteps, 23 features)
 
 Explanation:
   - Each sample contains the PREVIOUS 12 months of data
   - Used to predict the NEXT month's groundwater depth
   - Timesteps = 12 (lookback window)
-  - Features = Same 19 features as ML
+  - Features = Same 23 features as ML
 
 Target:
   - depth_mbgl (single value for next month)
@@ -219,7 +231,7 @@ Target:
 
 **Input:**
 ```python
-X_train.shape: (38000, 19)  # 38K samples, 19 features (tabular)
+X_train.shape: (38000, 23)  # 38K samples, 23 features (tabular)
 y_train.shape: (38000,)      # 38K target values
 ```
 
@@ -233,12 +245,12 @@ Example: [8.2, 12.5, 15.8, 9.1, ...]  # Predicted depth in meters
 
 **Input:**
 ```python
-X_train.shape: (37988, 12, 19)  # (samples, 12-month lookback, 19 features)
+X_train.shape: (37988, 12, 23)  # (samples, 12-month lookback, 23 features)
 y_train.shape: (37988,)         # Target for next month
 
 Example for 1 sample:
-  - Shape: (12, 19)
-  - Represents: Past 12 months of all 19 features
+  - Shape: (12, 23)
+  - Represents: Past 12 months of all 23 features
   - Predicts: Depth for month 13
 ```
 
@@ -280,20 +292,20 @@ Weights:
 
 | Feature Type | Data Type | Memory (per value) |
 |--------------|-----------|-------------------|
-| Rainfall, Temperature, Depth | `float32` | 4 bytes |
-| Month, District, Season | `int8` | 1 byte |
+| Rainfall, Temperature, Depth, Elevation, Slope, NDVI | `float32` | 4 bytes |
+| Month, District, Season, Soil Type | `int8` | 1 byte |
 | Latitude, Longitude | `float64` | 8 bytes |
 
 ### 7.2 Estimated Dataset Size
 
 ```
 ML Dataset (Tabular):
-  45,000 samples × 19 features × 4 bytes ≈ 3.4 MB
+  45,000 samples × 23 features × 4 bytes ≈ 4.1 MB
 
 DL Dataset (Sequential):
-  45,000 samples × 12 timesteps × 19 features × 4 bytes ≈ 41 MB
+  45,000 samples × 12 timesteps × 23 features × 4 bytes ≈ 50 MB
 
-Total (with train/test/validation): ~50-100 MB
+Total (with train/test/validation): ~60-120 MB
 ```
 
 **Conclusion:** Entire dataset fits easily in RAM. No need for batch loading or disk-based storage during training.
@@ -380,8 +392,12 @@ X_test_scaled = scaler.transform(X_test)
 | 19 | `district_encoded` | Geospatial | int8 | ✅ | ✅ | ⭐⭐⭐ |
 | 20 | `latitude` | Geospatial | float64 | ✅ | ✅ | ⭐⭐⭐ |
 | 21 | `longitude` | Geospatial | float64 | ✅ | ✅ | ⭐⭐⭐ |
+| 22 | `elevation_m` | Terrain | float32 | ✅ | ✅ | ⭐⭐⭐⭐ |
+| 23 | `slope_degree` | Terrain | float32 | ✅ | ✅ | ⭐⭐⭐ |
+| 24 | `soil_type_encoded` | Terrain | int8 | ✅ | ✅ | ⭐⭐⭐⭐ |
+| 25 | `ndvi` | Vegetation | float32 | ✅ | ✅ | ⭐⭐⭐ |
 
-**Total:** 21 input features + 1 target variable = 22 columns in final dataset
+**Total:** 25 input features + 1 target variable = 26 columns in final dataset
 
 ---
 
@@ -418,7 +434,11 @@ date,well_id,latitude,longitude,district,depth_mbgl,rainfall_mm,temperature_avg,
   'season_encoded': 2,         # Monsoon
   'district_encoded': 0,       # Nagpur
   'latitude': 20.5937,
-  'longitude': 78.9629
+  'longitude': 78.9629,
+  'elevation_m': 310.5,
+  'slope_degree': 2.8,
+  'soil_type_encoded': 1,      # Black Cotton soil
+  'ndvi': 0.45
 }
 
 Target (What we predict):

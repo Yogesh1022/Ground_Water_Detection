@@ -8,7 +8,7 @@
 
 ## Table of Contents
 
-1. [Dataset Columns & Parameters (22 Total)](#1-dataset-columns--parameters-22-total)
+1. [Dataset Columns & Parameters (26 Total)](#1-dataset-columns--parameters-26-total)
 2. [Raw Data vs Engineered Features](#2-raw-data-vs-engineered-features)
 3. [Dataset Types Classification](#3-dataset-types-classification)
 4. [Feature Importance Ranking](#4-feature-importance-ranking)
@@ -20,9 +20,9 @@
 
 ---
 
-## 1. Dataset Columns & Parameters (22 Total)
+## 1. Dataset Columns & Parameters (26 Total)
 
-The final processed dataset requires **21 input features + 1 target variable = 22 columns**.
+The final processed dataset requires **25 input features + 1 target variable = 26 columns**.
 
 ---
 
@@ -99,11 +99,24 @@ The final processed dataset requires **21 input features + 1 target variable = 2
 
 ---
 
+### 1.8 Terrain & Vegetation Features (4 — Geophysical & Remote Sensing)
+
+> **Why terrain & vegetation?** Groundwater recharge is heavily influenced by surface topography, soil permeability, and vegetation transpiration. Elevation and slope control runoff vs infiltration. Soil type determines percolation rate. NDVI captures vegetation water demand.
+
+| # | Column Name | Data Type | Unit | Valid Range | Source | Category | Description |
+|---|-------------|-----------|------|-------------|--------|----------|-------------|
+| 23 | **`elevation_m`** | float32 | Meters | 100 – 1200 m (Vidarbha) | SRTM 30m DEM (NASA Earthdata) | Numerical–Continuous | Elevation above sea level. Higher elevation generally means deeper water table and thinner aquifer. |
+| 24 | **`slope_degree`** | float32 | Degrees | 0 – 45° | Derived from SRTM DEM | Numerical–Derived | Terrain slope. Steep slopes increase surface runoff and reduce infiltration to aquifer. |
+| 25 | **`soil_type_encoded`** | int8 | — | 0 – 4 | FAO Digital Soil Map / ISRO NBSS&LUP | Categorical–Encoded (Label) | Soil classification: **0**=Alluvial, **1**=Black Cotton, **2**=Laterite, **3**=Red, **4**=Sandy. Controls water percolation rate. |
+| 26 | **`ndvi`** | float32 | Index | −1.0 to +1.0 | MODIS MOD13Q1 (250m, 16-day) | Numerical–Continuous | Normalized Difference Vegetation Index. Higher NDVI = denser vegetation = higher transpiration water loss. |
+
+---
+
 ## 2. Raw Data vs Engineered Features
 
-You only need to **collect 10 raw columns** from external data sources. The remaining **12 columns are derived** through feature engineering in Python.
+You only need to **collect 14 raw columns** from external data sources. The remaining **12 columns are derived** through feature engineering in Python.
 
-### 2.1 What You Collect (10 Raw Columns)
+### 2.1 What You Collect (14 Raw Columns)
 
 | # | Raw Column | Source | How to Get |
 |---|------------|--------|------------|
@@ -117,6 +130,10 @@ You only need to **collect 10 raw columns** from external data sources. The rema
 | 8 | `longitude` | India-WRIS (per well) | Comes with well data |
 | 9 | `district` | India-WRIS (per well) | Comes with well data |
 | 10 | `date` | Timestamp column | Comes with all records |
+| 11 | `elevation_m` | SRTM 30m DEM (NASA Earthdata) | Download GeoTIFF, extract value at lat/lon using `rasterio` |
+| 12 | `soil_type` | FAO Soil Map / ISRO NBSS&LUP | Download shapefile, spatial join with well coordinates |
+| 13 | `ndvi` | MODIS MOD13Q1 (Google Earth Engine) | GEE script or API to extract 16-day composite at lat/lon |
+| 14 | `slope_source_dem` | SRTM 30m DEM | Same DEM file as elevation — slope derived in preprocessing |
 
 ### 2.2 What You Engineer (12 Derived Columns)
 
@@ -135,6 +152,8 @@ You only need to **collect 10 raw columns** from external data sources. The rema
 | 11 | `depth_change_rate` | `depth_mbgl` | `diff()` per well |
 | 12 | `season_encoded` | `month` | Label encoding season |
 
+> **Note:** `slope_degree` is derived from the raw SRTM DEM using GIS processing (`numpy.gradient` or `richdem`), and `soil_type_encoded` is label-encoded from raw soil type categories. Both are computed once during preprocessing, not per-timestep.
+
 ---
 
 ## 3. Dataset Types Classification
@@ -143,9 +162,9 @@ You only need to **collect 10 raw columns** from external data sources. The rema
 
 | Data Type | Columns | Count | Description |
 |-----------|---------|-------|-------------|
-| **Numerical – Continuous** | `depth_mbgl`, `rainfall_mm`, `temperature_avg`, `humidity`, `evapotranspiration`, `soil_moisture_index`, all lag/rolling/deficit features, `latitude`, `longitude` | 17 | Real-valued numbers with infinite possible values within range |
+| **Numerical – Continuous** | `depth_mbgl`, `rainfall_mm`, `temperature_avg`, `humidity`, `evapotranspiration`, `soil_moisture_index`, all lag/rolling/deficit features, `latitude`, `longitude`, `elevation_m`, `slope_degree`, `ndvi` | 21 | Real-valued numbers with infinite possible values within range |
 | **Numerical – Discrete (Ordinal)** | `month` | 1 | Integer values that follow a meaningful order |
-| **Categorical – Encoded (Label)** | `season_encoded`, `district_encoded` | 2 | Text categories converted to integers via `LabelEncoder` |
+| **Categorical – Encoded (Label)** | `season_encoded`, `district_encoded`, `soil_type_encoded` | 3 | Text categories converted to integers via `LabelEncoder` |
 | **Numerical – Derived (Ratio)** | `temp_rainfall_ratio`, `depth_change_rate` | 2 | Calculated from combining two or more base features |
 
 ### 3.2 By Data Format
@@ -153,14 +172,14 @@ You only need to **collect 10 raw columns** from external data sources. The rema
 | Format | Usage | Description |
 |--------|-------|-------------|
 | **Tabular (CSV/Excel)** | ML models (XGBoost, Random Forest) | Standard rows × columns structure. Each row = one well at one timestamp. |
-| **Time-Series Sequences** | DL models (LSTM, GRU, 1D-CNN) | Same tabular data reshaped into 3D: `(samples, 12 timesteps, 19 features)`. Each sample = past 12 months. |
+| **Time-Series Sequences** | DL models (LSTM, GRU, 1D-CNN) | Same tabular data reshaped into 3D: `(samples, 12 timesteps, 23 features)`. Each sample = past 12 months. |
 | **Geospatial (GeoJSON/Shapefile)** | Map visualization (Folium) | District/taluka boundaries for Maharashtra. Used for map overlays, NOT for model training. |
 | **Raster/Image (NetCDF/TIFF)** | CHIRPS rainfall grids | Gridded satellite rainfall data. Extracted to numerical values per lat/lon — **images are NOT used directly by the model**. |
 | **JSON (API Response)** | Open-Meteo, NASA POWER | Raw API response format. Parsed into tabular numerical data. |
 
 ### 3.3 Important Note: No Image Data in Model
 
-> This project is **NOT** an image classification problem. All model inputs are **numerical/tabular**. Satellite imagery (CHIRPS, NASA) is used only as a **data source** — pixel values are extracted at specific coordinates and converted to numerical features. The ML/DL models never process raw images.
+> This project is **NOT** an image classification problem. All model inputs are **numerical/tabular**. Satellite imagery (CHIRPS, NASA, MODIS, SRTM) is used only as a **data source** — pixel values are extracted at specific coordinates and converted to numerical features. The ML/DL models never process raw images.
 
 ---
 
@@ -318,7 +337,7 @@ This section explains **how a user's phone GPS location is captured and used to 
                      │ Step 5: Build prediction vector
                      ▼
   ┌─────────────────────────────────────────┐
-  │  ASSEMBLE 21-FEATURE INPUT VECTOR       │
+  │  ASSEMBLE 25-FEATURE INPUT VECTOR       │
   │  [Interpolated lags from Step 3]        │
   │  + [Live weather from Step 4]           │
   │  + [User's GPS lat/lon]                 │
@@ -483,8 +502,8 @@ The prediction confidence depends on **how close** the nearest monitored well is
 
 | Model Type | Shape | Example | Memory |
 |------------|-------|---------|--------|
-| **ML (XGBoost, RF)** | `(n_samples, 21)` | `(45000, 21)` | ~3.4 MB |
-| **DL (LSTM, GRU, CNN)** | `(n_samples, 12, 21)` | `(45000, 12, 21)` | ~41 MB |
+| **ML (XGBoost, RF)** | `(n_samples, 25)` | `(45000, 25)` | ~4.3 MB |
+| **DL (LSTM, GRU, CNN)** | `(n_samples, 12, 25)` | `(45000, 12, 25)` | ~51 MB |
 
 ### 8.3 Train-Test Split (Time-Based — NOT Random)
 
@@ -504,6 +523,9 @@ The prediction confidence depends on **how close** the nearest monitored well is
 | `rainfall_mm` | 0 – 500 mm/month | Cap at 500 (extreme but possible) |
 | `temperature_avg` | 10 – 45 °C | Drop if outside range (sensor error) |
 | `latitude` / `longitude` | Vidarbha bounds | Drop (cannot impute GPS coords) |
+| `elevation_m` | 100 – 1200 m | Drop if outside Vidarbha elevation range |
+| `slope_degree` | 0 – 45° | Cap at 45° (cliffs are rare in Vidarbha) |
+| `ndvi` | −1.0 to +1.0 | Drop if outside range (invalid pixel) |
 
 ---
 
@@ -519,6 +541,10 @@ The prediction confidence depends on **how close** the nearest monitored well is
 | 4 | **Open-Meteo** | Historical + real-time weather: temp, humidity, precipitation, wind | JSON API | [https://open-meteo.com/en/docs/historical-weather-api](https://open-meteo.com/en/docs/historical-weather-api) |
 | 5 | **GSDA Maharashtra** (Groundwater Surveys & Development Agency) | State-specific well monitoring reports for Maharashtra villages | PDF / Excel | [https://gsda.maharashtra.gov.in/](https://gsda.maharashtra.gov.in/) |
 | 6 | **Census of India** (2011/2021) | Village-level population, irrigation area, cropping patterns | CSV | [https://censusindia.gov.in/](https://censusindia.gov.in/) |
+| 7 | **SRTM 30m DEM** (NASA Earthdata) | Elevation data (30m resolution) for terrain analysis — slope, aspect | GeoTIFF | [https://earthexplorer.usgs.gov/](https://earthexplorer.usgs.gov/) |
+| 8 | **MODIS MOD13Q1** (NASA / GEE) | NDVI vegetation index (250m, 16-day composite) — vegetation health | HDF / GeoTIFF | [https://lpdaac.usgs.gov/products/mod13q1v061/](https://lpdaac.usgs.gov/products/mod13q1v061/) |
+| 9 | **FAO Digital Soil Map** (FAO/UNESCO) | Global soil classification — soil type per location | Shapefile / Raster | [https://www.fao.org/soils-portal/data-hub/](https://www.fao.org/soils-portal/data-hub/) |
+| 10 | **ISRO NBSS&LUP** (Bhopal) | India-specific soil survey maps at higher resolution than FAO | Shapefile | [https://www.nbsslup.in/](https://www.nbsslup.in/) |
 
 ### 9.2 Kaggle Datasets (FREE — Pre-Cleaned, Ready to Use)
 
@@ -591,4 +617,4 @@ GET https://power.larc.nasa.gov/api/temporal/monthly/point
 
 ---
 
-> **Summary:** This project uses **22 numerical/categorical columns** (no images), requires **Python + ML/DL skills**, collects data from **6 free sources**, and supports **GPS-based predictions** through KNN spatial interpolation + live API weather fetching.
+> **Summary:** This project uses **26 numerical/categorical columns** (no images), requires **Python + ML/DL skills**, collects data from **10 free sources**, and supports **GPS-based predictions** through KNN spatial interpolation + live API weather fetching.

@@ -30,7 +30,7 @@
 |------|--------|--------|
 | Morning | Create GitHub repo, set folder structure, initialize `README.md` | Set up Python virtual env, install all dependencies from `requirements.txt` |
 | Afternoon | Create shared Google Drive for raw data files | Set up Google Colab notebook with GPU runtime for DL training later |
-| Evening | Both jointly finalize the 22-column schema in a shared spreadsheet and agree on column names, data types, and file naming conventions |
+| Evening | Both jointly finalize the 26-column schema in a shared spreadsheet and agree on column names, data types, and file naming conventions |
 
 **Folder Structure to Create:**
 ```
@@ -93,7 +93,7 @@ saved_models/
 
 ## Phase 2: Feature Engineering (Day 9–14)
 
-### Day 9–11 — Create All 22 Features
+### Day 9–11 — Create All 26 Features
 
 | Task | Yogesh | Gaurav |
 |------|--------|--------|
@@ -116,9 +116,9 @@ saved_models/
 
 | Task | Yogesh | Gaurav |
 |------|--------|--------|
-| **Day 14** | Create 3D sequences for DL: `(samples, 12 timesteps, 21 features)` using sliding window per well | Apply MinMaxScaler (0–1) normalization. Save scaler object with `joblib` for inverse transform during prediction |
+| **Day 14** | Create 3D sequences for DL: `(samples, 12 timesteps, 25 features)` using sliding window per well | Apply MinMaxScaler (0–1) normalization. Save scaler object with `joblib` for inverse transform during prediction |
 
-**Phase 2 Deliverable:** Final 22-column dataset split into train/val/test + DL-ready 3D arrays + saved scaler
+**Phase 2 Deliverable:** Final 26-column dataset split into train/val/test + DL-ready 3D arrays + saved scaler
 
 ---
 
@@ -147,7 +147,7 @@ saved_models/
 
 | Task | Yogesh | Gaurav |
 |------|--------|--------|
-| **Day 20** | Set up **FastAPI** project structure. Create `/predict` endpoint that loads saved XGBoost model and accepts 21 features as JSON input | Create `/health` endpoint + `/model-info` endpoint. Write utility functions for input validation and feature preprocessing |
+| **Day 20** | Set up **FastAPI** project structure. Create `/predict` endpoint that loads saved XGBoost model and accepts 25 features as JSON input | Create `/health` endpoint + `/model-info` endpoint. Write utility functions for input validation and feature preprocessing |
 | **Day 21** | Create `/predict/batch` endpoint for multiple predictions at once. Add error handling and input validation | Create `/api/districts` endpoint (returns list of 11 Vidarbha districts) + `/api/wells` endpoint (returns well locations for map). Test all endpoints with Postman/Thunder Client |
 
 **Phase 3 Deliverable:** 3 trained ML models saved to disk + SHAP plots + working FastAPI with `/predict` endpoint
