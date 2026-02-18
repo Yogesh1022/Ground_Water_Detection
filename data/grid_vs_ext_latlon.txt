@@ -1,0 +1,108 @@
+=====================================================================================
+  GRID DATASET vs EXTENDED DATASET - LAT/LON COMPARISON
+=====================================================================================
+
+--- 1. BASIC INFO ---
+  Grid:       93,772 rows x 10 cols
+  Extended:   83,850 rows x 30 cols
+
+  Grid columns: ['system:index', 'elevation', 'month', 'ndvi', 'rainfall', 'temperature', 'year', '.geo', 'longitude', 'latitude']
+  Extended columns: ['well_id', 'date', 'year', 'district', 'depth_mbgl', 'rainfall_mm', 'temperature_avg', 'humidity', 'evapotranspiration', 'soil_moisture_index', 'rainfall_lag_1m', 'rainfall_lag_2m', 'rainfall_lag_3m', 'rainfall_rolling_3m', 'rainfall_rolling_6m', 'rainfall_deficit', 'cumulative_deficit', 'temp_rainfall_ratio', 'depth_lag_1q', 'depth_lag_2q', 'depth_change_rate', 'month', 'season_encoded', 'district_encoded', 'latitude', 'longitude', 'elevation_m', 'slope_degree', 'soil_type_encoded', 'ndvi']
+
+  Grid lat cols: ['latitude'], lon cols: ['longitude']
+  Ext  lat cols: ['latitude'], lon cols: ['longitude']
+
+  Using: Grid(latitude, longitude), Extended(latitude, longitude)
+
+--- 2. UNIQUE COORDINATE COUNTS ---
+  Grid:    788 unique (lat, lon) pairs
+  Ext:     650 unique (lat, lon) pairs
+
+  Grid: 26 unique lats, 45 unique lons
+  Ext:  650 unique lats, 650 unique lons
+
+--- 3. LATITUDE STATISTICS ---
+  Stat                  Grid        Extended   Vidarbha Real
+  min              19.448526       19.509442         19.0000
+  max              21.694314       21.486573         22.0500
+  mean             20.676869       20.617310
+  std               0.551920        0.476871
+  range             2.245788        1.977131          3.0500
+
+--- 4. LONGITUDE STATISTICS ---
+  Stat                  Grid        Extended   Vidarbha Real
+  min              76.671209       75.901869         75.5000
+  max              80.623797       80.392961         80.9000
+  mean             78.501128       78.433528
+  std               1.019943        1.214399
+  range             3.952587        4.491092          5.4000
+
+--- 5. DECIMAL PRECISION ---
+  Grid latitude:   13-15 decimals (avg 14.8)
+  Grid longitude:  13-15 decimals (avg 14.7)
+  Ext  latitude:   4-15 decimals (avg 12.7)
+  Ext  longitude:  5-15 decimals (avg 14.3)
+
+  Precision meaning:
+    1 decimal  = ~11.1 km accuracy
+    2 decimals = ~1.1 km accuracy
+    4 decimals = ~11 m accuracy (good for well)
+    6 decimals = ~0.11 m accuracy (GPS-grade)
+
+--- 6. SPATIAL PATTERN (Regular Grid vs Scattered) ---
+  Grid lat spacing: min=0.089832, max=0.089832, mean=0.089832 deg
+    Spacing std: 0.00000000
+    Pattern: REGULAR GRID
+    Average spacing = ~9.97 km
+  Ext  lat spacing: min=0.000001, max=0.065279, mean=0.003046 deg
+    Spacing std: 0.00486954
+    Pattern: IRREGULAR/SCATTERED
+    Average spacing = ~0.34 km
+
+--- 7. VIDARBHA BOUNDARY COVERAGE ---
+  Grid:    788/   788 inside Vidarbha (100.0%)
+  Ext:     650/   650 inside Vidarbha (100.0%)
+
+--- 8. SAMPLE COORDINATES (first 10 unique) ---
+  Grid:
+    (19.448526, 77.749188)
+    (19.538357, 77.749188)
+    (19.538357, 77.839019)
+    (19.538357, 77.928851)
+    (19.538357, 78.018682)
+    (19.538357, 78.108514)
+    (19.538357, 79.096661)
+    (19.538357, 79.186492)
+    (19.538357, 79.455987)
+    (19.538357, 79.545818)
+  Extended:
+    (20.767987, 77.291443)
+    (20.879047, 76.814523)
+    (20.878607, 77.043910)
+    (20.696465, 77.260197)
+    (20.585400, 76.847436)
+    (20.823378, 76.817494)
+    (20.780373, 77.025907)
+    (20.580572, 77.016346)
+    (20.863344, 76.932777)
+    (20.779342, 76.874188)
+
+--- 9. ELEVATION COMPARISON ---
+  Grid (elevation): mean=331.3, std=105.0, range=169.0-938.0
+  Ext  (elevation_m): mean=362.8, std=98.4, range=185.1-679.6
+
+=====================================================================================
+  FINAL VERDICT
+=====================================================================================
+
+  Criterion                       Winner           Detail
+  ---------------------------------------------------------------------------
+  Spatial point count             Grid             788 vs 650
+  Decimal precision               Grid             14.7 vs 13.5 avg decimals
+  Vidarbha boundary               TIE              100.0% vs 100.0%
+  Range matches Vidarbha          Extended         err=1.982 vs 2.252
+  Spatial pattern                 Depends          Grid=uniform / Ext=well-location based
+
+  SCORES:  Grid = 4  |  Extended = 1
+  WINNER FOR LAT/LON: GRID
+=====================================================================================
