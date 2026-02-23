@@ -438,7 +438,9 @@ def compute_recharge(rainfall_mm, geology, month):
         return 0.0
 
     excess = rainfall_mm - threshold
-    efficiency = geology['specific_yield'] * geology['fracture_density']
+    # fracture_density governs how much excess rain infiltrates into fractures (6–14% of rainfall)
+    # specific_yield is kept ONLY for the depth-head conversion in the caller — NOT used here
+    efficiency = geology['fracture_density'] * 0.35
 
     # Non-linear: diminishing returns above 200mm (excess becomes runoff)
     if excess > 200:
@@ -521,8 +523,9 @@ def generate_depth_series_v2(n_months, base_depth, amplitude, well_type,
 
         # 1. RECHARGE — non-linear, threshold-based
         recharge = compute_recharge(rain, geology, month) * resp
-        # Convert recharge (mm water equivalent) to depth change (m)
-        recharge_depth_change = recharge / (geology['specific_yield'] * 1000 + 1)
+        # Darcy conversion: depth_change_m = recharge_mm / (Sy × 1000)
+        # Sy=0.015–0.030 for Vidarbha basalt → 1m depth change per 15–30mm recharge
+        recharge_depth_change = recharge / (geology['specific_yield'] * 1000)
 
         # 2. PUMPING DRAWDOWN
         pump_base = PUMPING_SCHEDULE[month]
@@ -534,7 +537,9 @@ def generate_depth_series_v2(n_months, base_depth, amplitude, well_type,
         else:
             desperation = 1.0
 
-        pump_drawdown = pump_base * pf * pumping_mult * desperation * base_depth * 0.01
+        # scale 0.08: sum of monthly PUMPING_SCHEDULE = ~0.69; annual drawdown ≈ 0.69×pf×mult×base×0.08
+        # e.g. Akola medium well 80m: annual ≈ 0.69×1.0×1.5×80×0.08 ≈ 6.6m/year (realistic)
+        pump_drawdown = pump_base * pf * pumping_mult * desperation * base_depth * 0.08
 
         # 3. NATURAL DISCHARGE
         discharge = compute_natural_discharge(current_depth, base_depth, geology)
