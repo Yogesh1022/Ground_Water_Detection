@@ -1,0 +1,32 @@
+{
+  "model": "GRU (Stacked GRU Regressor)",
+  "target": "depth_mbgl",
+  "transform": "log1p / expm1",
+  "lookback_months": 12,
+  "features_used": 25,
+  "split": "75% train / 12.5% val / 12.5% test (row-index)",
+  "architecture": {
+    "gru_units_1": 256,
+    "gru_units_2": 128,
+    "dense_units": 64,
+    "dropout_rate": 0.2,
+    "learning_rate": 0.0005,
+    "batch_size": 64
+  },
+  "train": {
+    "R2": 0.909,
+    "RMSE": 16.6815,
+    "MAE": 11.4897,
+    "MdAPE": 21.231
+  },
+  "test": {
+    "R2": 0.9237,
+    "RMSE": 20.3467,
+    "MAE": 13.5656,
+    "MdAPE": 17.3194,
+    "risk_accuracy_pct": 83.7
+  },
+  "wf_cv_r2_mean": 0.9135,
+  "wf_cv_r2_std": 0.0465,
+  "wf_cv_rmse_mean": 13.4097
+}
