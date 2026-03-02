@@ -1,0 +1,29 @@
+{
+  "model": "RandomForestRegressor",
+  "target": "depth_mbgl",
+  "transform": "log1p / expm1",
+  "split": "75% train / 12.5% val / 12.5% test (row-index)",
+  "features_used": 25,
+  "train": {
+    "R2": 0.9985,
+    "RMSE": 2.171,
+    "MAE": 1.4751,
+    "MdAPE": 2.6934
+  },
+  "val": {
+    "R2": 0.9983,
+    "RMSE": 2.7115,
+    "MAE": 1.8803,
+    "MdAPE": 2.3907
+  },
+  "test": {
+    "R2": 0.995,
+    "RMSE": 5.232,
+    "MAE": 3.4684,
+    "MdAPE": 4.1076,
+    "risk_accuracy_pct": 96.5
+  },
+  "oob_r2_trainval": 0.9841,
+  "cv_r2_mean": 0.9634,
+  "cv_r2_std": 0.0172
+}
