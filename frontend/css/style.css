@@ -1,0 +1,203 @@
+/* ================================================================
+   AquaVidarbha — Shared Styles
+   ================================================================ */
+
+/* ---- Hero gradient (landing page) ---- */
+.hero-gradient {
+  background: linear-gradient(135deg, #05281c 0%, #114832 25%, #188a57 55%, #26a96c 80%, #48c38c 100%);
+}
+
+/* ---- Blobs (landing hero bg) ---- */
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.25;
+  animation: blobFloat 20s ease-in-out infinite alternate;
+}
+.blob-1 { width: 600px; height: 600px; background: #48c38c; top: -200px; right: -100px; }
+.blob-2 { width: 400px; height: 400px; background: #0ea5e9; bottom: -100px; left: -50px; animation-delay: -7s; }
+.blob-3 { width: 500px; height: 500px; background: #7cdaae; top: 50%; left: 40%; animation-delay: -14s; }
+
+@keyframes blobFloat {
+  0%   { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(30px, -40px) scale(1.05); }
+  66%  { transform: translate(-20px, 20px) scale(0.95); }
+  100% { transform: translate(10px, -10px) scale(1); }
+}
+
+/* ---- Tech badges (landing page) ---- */
+.tech-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 1.25rem 1rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+.tech-badge:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  border-color: #b0eacc;
+}
+
+/* ---- Feature cards hover ---- */
+.feature-card {
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.feature-card:hover {
+  transform: translateY(-6px);
+}
+
+/* ================================================================
+   DASHBOARD STYLES
+   ================================================================ */
+
+/* ---- Sidebar nav links ---- */
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.nav-link:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+.nav-link.active {
+  background: linear-gradient(135deg, #eefbf4, #d6f5e3);
+  color: #146e47;
+  font-weight: 600;
+}
+
+/* Dark mode nav links */
+.dark .nav-link:hover {
+  background: #1f2937;
+  color: #f3f4f6;
+}
+.dark .nav-link.active {
+  background: linear-gradient(135deg, rgba(38, 169, 108, 0.15), rgba(72, 195, 140, 0.1));
+  color: #48c38c;
+}
+
+/* ---- Dashboard cards ---- */
+.dash-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: all 0.3s;
+}
+.dash-card:hover {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05);
+}
+.dark .dash-card {
+  background: #111827;
+  border-color: #1f2937;
+}
+.dark .dash-card:hover {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* ---- KPI cards ---- */
+.kpi-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: all 0.3s;
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+}
+.dark .kpi-card {
+  background: #111827;
+  border-color: #1f2937;
+}
+.dark .kpi-card:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* ---- Sidebar collapsed state ---- */
+.sidebar-collapsed {
+  width: 4.5rem !important;
+}
+.sidebar-collapsed .sidebar-text {
+  display: none;
+}
+.sidebar-collapsed .nav-link {
+  justify-content: center;
+  padding: 0.625rem;
+}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #374151;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}
+
+/* ---- Smooth page transitions ---- */
+.page-content {
+  animation: fadeInPage 0.3s ease;
+}
+@keyframes fadeInPage {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- Drop zone hover ---- */
+#dropZone.dragover {
+  border-color: #26a96c;
+  background: #eefbf4;
+}
+.dark #dropZone.dragover {
+  background: rgba(38, 169, 108, 0.1);
+}
+
+/* ---- Responsive sidebar ---- */
+@media (max-width: 768px) {
+  #sidebar {
+    position: fixed;
+    left: -100%;
+    top: 0;
+    height: 100%;
+    z-index: 50;
+    transition: left 0.3s;
+  }
+  #sidebar.mobile-open {
+    left: 0;
+  }
+}
+
+/* ---- Pulse animation for status dots ---- */
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
