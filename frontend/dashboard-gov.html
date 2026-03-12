@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AquaVidarbha — Government Officer Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    :root {
+      --bg:#03080f; --surface:#070e1a; --card:rgba(7,14,26,.85);
+      --border:rgba(59,130,246,.12); --border-soft:rgba(255,255,255,.06);
+      --cyan:#22d3ee; --blue:#3b82f6; --green:#10b981; --amber:#f59e0b; --rose:#f43f5e; --purple:#8b5cf6;
+      --text:#e2e8f0; --muted:#64748b;
+      --accent: #3b82f6;
+      --sidebar-w:250px;
+    }
+    body { font-family:'Manrope',sans-serif; background:var(--bg); color:var(--text); display:flex; min-height:100vh; overflow-x:hidden; }
+    body::before { content:''; position:fixed; inset:0; z-index:0; background-image:linear-gradient(rgba(59,130,246,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,.025) 1px,transparent 1px); background-size:50px 50px; pointer-events:none; }
+
+    #sidebar {
+      width:var(--sidebar-w); background:rgba(5,10,20,.97); border-right:1px solid rgba(59,130,246,.12);
+      display:flex; flex-direction:column; position:fixed; top:0; left:0; height:100vh; z-index:50; backdrop-filter:blur(20px);
+    }
+    .sidebar-logo { padding:1.5rem 1.25rem; border-bottom:1px solid rgba(59,130,246,.1); display:flex; align-items:center; gap:.75rem; }
+    .sidebar-logo-icon { width:36px; height:36px; border-radius:9px; background:linear-gradient(135deg,var(--blue),var(--purple)); display:flex; align-items:center; justify-content:center; font-size:1rem; box-shadow:0 0 15px rgba(59,130,246,.4); }
+    .sidebar-logo-text { font-family:'Syne',sans-serif; font-weight:800; font-size:.95rem; }
+    .sidebar-role { font-size:.65rem; color:var(--blue); font-family:'JetBrains Mono',monospace; margin-top:.1rem; }
+    .sidebar-nav { flex:1; padding:1rem .75rem; display:flex; flex-direction:column; gap:.2rem; overflow-y:auto; }
+    .nav-section { font-family:'JetBrains Mono',monospace; font-size:.6rem; color:var(--muted); letter-spacing:.1em; padding:.75rem .5rem .3rem; text-transform:uppercase; }
+    .nav-item { display:flex; align-items:center; gap:.75rem; padding:.6rem .75rem; border-radius:8px; font-size:.85rem; color:var(--muted); text-decoration:none; transition:all .2s; cursor:pointer; border:none; background:none; width:100%; text-align:left; }
+    .nav-item:hover { background:rgba(59,130,246,.07); color:var(--text); }
+    .nav-item.active { background:rgba(59,130,246,.12); color:var(--blue); font-weight:600; border:1px solid rgba(59,130,246,.25); }
+    .nav-item .icon { font-size:1rem; width:20px; text-align:center; }
+    .sidebar-bottom { padding:1rem .75rem; border-top:1px solid var(--border-soft); }
+    .user-card { display:flex; align-items:center; gap:.75rem; padding:.75rem; border-radius:10px; background:rgba(59,130,246,.06); border:1px solid rgba(59,130,246,.15); }
+    .user-avatar { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,var(--blue),var(--purple)); display:flex; align-items:center; justify-content:center; font-size:.9rem; flex-shrink:0; }
+    .user-name { font-size:.82rem; font-weight:600; }
+    .user-role { font-size:.65rem; color:var(--blue); font-family:'JetBrains Mono',monospace; }
+
+    #main { margin-left:var(--sidebar-w); flex:1; display:flex; flex-direction:column; position:relative; z-index:1; min-height:100vh; }
+    .topbar { padding:1rem 2rem; border-bottom:1px solid var(--border-soft); display:flex; align-items:center; justify-content:space-between; background:rgba(5,10,20,.8); backdrop-filter:blur(20px); position:sticky; top:0; z-index:10; }
+    .page-title { font-family:'Syne',sans-serif; font-size:1.1rem; font-weight:700; }
+    .topbar-right { display:flex; align-items:center; gap:1rem; }
+    .topbar-btn { padding:.45rem .9rem; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--muted); font-size:.8rem; cursor:pointer; transition:all .2s; font-family:'Manrope',sans-serif; }
+    .topbar-btn:hover { border-color:var(--blue); color:var(--blue); }
+    .badge-gov { display:inline-flex; align-items:center; gap:.4rem; padding:.3rem .7rem; border-radius:999px; background:rgba(59,130,246,.1); border:1px solid rgba(59,130,246,.25); color:var(--blue); font-size:.72rem; font-family:'JetBrains Mono',monospace; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .content { padding:2rem; flex:1; }
+    .page-view { display:none; animation:fadeIn .3s ease; }
+    .page-view.active { display:block; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+    .kpi-row { display:grid; grid-template-columns:repeat(5,1fr); gap:1rem; margin-bottom:1.5rem; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem; }
+    .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.5rem; margin-bottom:1.5rem; }
+
+    .card { background:rgba(255,255,255,.025); border:1px solid var(--border-soft); border-radius:14px; padding:1.5rem; margin-bottom:1.5rem; }
+    .card:last-child { margin-bottom:0; }
+    .card-title { font-family:'Syne',sans-serif; font-size:.9rem; font-weight:700; margin-bottom:1rem; display:flex; align-items:center; gap:.5rem; justify-content:space-between; }
+    .card-title-left { display:flex; align-items:center; gap:.5rem; }
+    .dot { width:7px; height:7px; border-radius:50%; }
+
+    .kpi { padding:1.1rem; border-radius:12px; border:1px solid var(--border-soft); background:rgba(255,255,255,.02); transition:all .3s; }
+    .kpi:hover { transform:translateY(-2px); border-color:rgba(59,130,246,.2); }
+    .kpi-icon { font-size:1.2rem; margin-bottom:.4rem; }
+    .kpi-val { font-family:'JetBrains Mono',monospace; font-size:1.5rem; font-weight:700; display:block; line-height:1; }
+    .kpi-label { font-size:.72rem; color:var(--muted); margin-top:.3rem; }
+    .kpi-change { font-size:.7rem; margin-top:.35rem; font-family:'JetBrains Mono',monospace; }
+    .up { color:var(--rose); } .down { color:var(--green); } .warn { color:var(--amber); }
+
+    .data-table { width:100%; border-collapse:collapse; font-size:.83rem; }
+    .data-table th { padding:.65rem .9rem; text-align:left; font-size:.68rem; color:var(--muted); font-family:'JetBrains Mono',monospace; letter-spacing:.05em; border-bottom:1px solid var(--border-soft); font-weight:500; text-transform:uppercase; }
+    .data-table td { padding:.8rem .9rem; border-bottom:1px solid rgba(255,255,255,.03); }
+    .data-table tr:hover td { background:rgba(255,255,255,.02); }
+    .status-badge { display:inline-flex; align-items:center; gap:.3rem; padding:.2rem .6rem; border-radius:999px; font-size:.68rem; font-family:'JetBrains Mono',monospace; font-weight:600; }
+    .s-open { background:rgba(34,211,238,.1); color:var(--cyan); border:1px solid rgba(34,211,238,.2); }
+    .s-review { background:rgba(245,158,11,.1); color:var(--amber); border:1px solid rgba(245,158,11,.2); }
+    .s-resolved { background:rgba(16,185,129,.1); color:var(--green); border:1px solid rgba(16,185,129,.2); }
+    .s-critical { background:rgba(244,63,94,.1); color:var(--rose); border:1px solid rgba(244,63,94,.2); }
+    .s-assigned { background:rgba(59,130,246,.1); color:var(--blue); border:1px solid rgba(59,130,246,.2); }
+
+    .filter-bar { display:flex; gap:.75rem; margin-bottom:1.25rem; flex-wrap:wrap; }
+    .filter-pill { padding:.35rem .9rem; border-radius:999px; border:1px solid var(--border-soft); background:transparent; color:var(--muted); font-size:.78rem; cursor:pointer; transition:all .2s; font-family:'JetBrains Mono',monospace; }
+    .filter-pill:hover, .filter-pill.active { border-color:var(--blue); color:var(--blue); background:rgba(59,130,246,.08); }
+
+    .form-input, .form-select { width:100%; padding:.65rem .9rem; border-radius:8px; border:1px solid var(--border-soft); background:rgba(255,255,255,.04); color:var(--text); font-size:.85rem; font-family:'Manrope',sans-serif; transition:all .2s; outline:none; }
+    .form-input:focus, .form-select:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(59,130,246,.1); }
+    .form-select option { background:#0d1117; }
+    .form-label { display:block; font-size:.75rem; font-weight:600; margin-bottom:.35rem; color:var(--muted); font-family:'JetBrains Mono',monospace; letter-spacing:.05em; }
+    .form-group { margin-bottom:1rem; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+
+    .btn { padding:.6rem 1.2rem; border-radius:8px; border:none; cursor:pointer; font-size:.83rem; font-weight:600; font-family:'Manrope',sans-serif; transition:all .2s; }
+    .btn-primary { background:linear-gradient(135deg,var(--blue),var(--purple)); color:#fff; }
+    .btn-primary:hover { transform:translateY(-2px); box-shadow:0 0 20px rgba(59,130,246,.4); }
+    .btn-sm { padding:.35rem .8rem; font-size:.75rem; }
+    .btn-outline { background:transparent; border:1px solid var(--border); color:var(--muted); }
+    .btn-outline:hover { border-color:var(--blue); color:var(--blue); }
+    .btn-success { background:rgba(16,185,129,.15); border:1px solid rgba(16,185,129,.3); color:var(--green); }
+    .btn-danger { background:rgba(244,63,94,.1); border:1px solid rgba(244,63,94,.25); color:var(--rose); }
+
+    .chart-wrap { position:relative; height:220px; }
+    .chart-wrap-sm { position:relative; height:180px; }
+
+    .activity-item { display:flex; gap:.75rem; padding:.7rem 0; border-bottom:1px solid rgba(255,255,255,.04); }
+    .activity-item:last-child { border-bottom:none; }
+    .activity-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:.35rem; }
+    .activity-text { font-size:.82rem; line-height:1.5; }
+    .activity-time { font-size:.68rem; color:var(--muted); font-family:'JetBrains Mono',monospace; margin-top:.15rem; }
+
+    .priority-tag { display:inline-block; padding:.15rem .5rem; border-radius:4px; font-size:.65rem; font-weight:700; font-family:'JetBrains Mono',monospace; }
+    .p-high { background:rgba(244,63,94,.15); color:var(--rose); }
+    .p-med { background:rgba(245,158,11,.15); color:var(--amber); }
+    .p-low { background:rgba(34,211,238,.1); color:var(--cyan); }
+
+    @media(max-width:1100px){ .kpi-row{grid-template-columns:repeat(3,1fr);} }
+    @media(max-width:900px){
+      #sidebar{transform:translateX(-100%);}
+      #sidebar.open{transform:translateX(0);}
+      #main{margin-left:0;}
+      .kpi-row{grid-template-columns:1fr 1fr;}
+      .grid-2,.grid-3,.form-grid{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+
+<aside id="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">🏛️</div>
+    <div>
+      <div class="sidebar-logo-text">AquaVidarbha</div>
+      <div class="sidebar-role">GOVT OFFICER PORTAL</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <span class="nav-section">// COMMAND</span>
+    <button class="nav-item active" onclick="showPage('overview',this)"><span class="icon">📊</span> Command Center</button>
+    <button class="nav-item" onclick="showPage('requests',this)"><span class="icon">📋</span> All Requests <span style="margin-left:auto;background:rgba(244,63,94,.2);color:var(--rose);padding:.1rem .45rem;border-radius:999px;font-size:.65rem;font-family:'JetBrains Mono',monospace">14</span></button>
+    <button class="nav-item" onclick="showPage('districts',this)"><span class="icon">🗺️</span> District Analytics</button>
+    <button class="nav-item" onclick="showPage('forecast',this)"><span class="icon">🤖</span> AI Forecasts</button>
+    <span class="nav-section">// MANAGEMENT</span>
+    <button class="nav-item" onclick="showPage('assign',this)"><span class="icon">👥</span> Task Assignment</button>
+    <button class="nav-item" onclick="showPage('tankers',this)"><span class="icon">🚛</span> Tanker Schedule</button>
+    <button class="nav-item" onclick="showPage('reports',this)"><span class="icon">📈</span> Generate Reports</button>
+    <span class="nav-section">// SYSTEM</span>
+    <button class="nav-item" onclick="showPage('activity',this)"><span class="icon">📝</span> Activity Log</button>
+    <a href="index.html" class="nav-item"><span class="icon">🏠</span> Home</a>
+    <a href="gov-login.html" class="nav-item"><span class="icon">🔒</span> Logout</a>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="user-card">
+      <div class="user-avatar">🏛️</div>
+      <div>
+        <div class="user-name">Suresh Kulkarni</div>
+        <div class="user-role">DISTRICT OFFICER · AMRAVATI</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<main id="main">
+  <div class="topbar">
+    <div class="page-title" id="page-title">📊 Command Center</div>
+    <div class="topbar-right">
+      <span class="badge-gov">🏛️ GOV OFFICER · AMRAVATI</span>
+      <button class="topbar-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- OVERVIEW -->
+    <div class="page-view active" id="page-overview">
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-icon">📋</div><span class="kpi-val" style="color:var(--rose)">14</span><div class="kpi-label">Open Requests</div><div class="kpi-change up">▲ 3 new today</div></div>
+        <div class="kpi"><div class="kpi-icon">⏳</div><span class="kpi-val" style="color:var(--amber)">6</span><div class="kpi-label">In Progress</div><div class="kpi-change warn">→ 2 overdue</div></div>
+        <div class="kpi"><div class="kpi-icon">✅</div><span class="kpi-val" style="color:var(--green)">48</span><div class="kpi-label">Resolved (Month)</div><div class="kpi-change down">▲ 94% rate</div></div>
+        <div class="kpi"><div class="kpi-icon">🚨</div><span class="kpi-val" style="color:var(--rose)">3</span><div class="kpi-label">Critical Zones</div><div class="kpi-change up">▲ 1 escalated</div></div>
+        <div class="kpi"><div class="kpi-icon">🚛</div><span class="kpi-val" style="color:var(--blue)">12</span><div class="kpi-label">Tankers Active</div><div class="kpi-change warn">→ 3 routes today</div></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title"><div class="card-title-left"><div class="dot" style="background:var(--blue)"></div> Requests by Category (This Month)</div></div>
+          <div class="chart-wrap"><canvas id="catChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><div class="card-title-left"><div class="dot" style="background:var(--rose)"></div> District-wise Crisis Index</div></div>
+          <div class="chart-wrap"><canvas id="distChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title"><div class="card-title-left"><div class="dot" style="background:var(--amber)"></div> Priority Requests — Needs Action</div></div>
+          <table class="data-table">
+            <thead><tr><th>ID</th><th>Issue</th><th>Village</th><th>Priority</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--blue)">#R-1042</td><td>Well dried up</td><td>Warud</td><td><span class="priority-tag p-high">HIGH</span></td><td><span class="status-badge s-open">OPEN</span></td><td><button class="btn btn-sm btn-primary" onclick="assignRequest(1042)">Assign</button></td></tr>
+              <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--blue)">#R-1041</td><td>No tanker 7 days</td><td>Morshi</td><td><span class="priority-tag p-high">HIGH</span></td><td><span class="status-badge s-critical">CRITICAL</span></td><td><button class="btn btn-sm btn-danger" onclick="escalate(1041)">Escalate</button></td></tr>
+              <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--blue)">#R-1039</td><td>Pipeline burst</td><td>Daryapur</td><td><span class="priority-tag p-med">MED</span></td><td><span class="status-badge s-review">REVIEW</span></td><td><button class="btn btn-sm btn-outline">View</button></td></tr>
+              <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--blue)">#R-1037</td><td>Water quality</td><td>Anjangaon</td><td><span class="priority-tag p-med">MED</span></td><td><span class="status-badge s-assigned">ASSIGNED</span></td><td><button class="btn btn-sm btn-success" onclick="resolve(1037)">Resolve</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-title"><div class="card-title-left"><div class="dot" style="background:var(--green)"></div> Recent Activity</div></div>
+          <div class="activity-item"><div class="activity-dot" style="background:var(--green)"></div><div><div class="activity-text">Report #R-1038 marked as Resolved — Tanker dispatched to Daryapur</div><div class="activity-time">Mar 11, 2026 · 10:32 AM · You</div></div></div>
+          <div class="activity-item"><div class="activity-dot" style="background:var(--blue)"></div><div><div class="activity-text">Task assigned to Field Engineer Patil — Pipeline repair in Warud</div><div class="activity-time">Mar 11, 2026 · 09:15 AM · You</div></div></div>
+          <div class="activity-item"><div class="activity-dot" style="background:var(--rose)"></div><div><div class="activity-text">⚠ AI Alert: Yavatmal GW depth crossed −72m — CRITICAL threshold</div><div class="activity-time">Mar 10, 2026 · 06:00 AM · System</div></div></div>
+          <div class="activity-item"><div class="activity-dot" style="background:var(--amber)"></div><div><div class="activity-text">Report #R-1041 escalated to District Collector office</div><div class="activity-time">Mar 9, 2026 · 03:45 PM · You</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALL REQUESTS -->
+    <div class="page-view" id="page-requests">
+      <div class="card">
+        <div class="card-title"><div class="card-title-left"><div class="dot" style="background:var(--blue)"></div> All Citizen Requests</div>
+          <button class="btn btn-primary btn-sm">⬇ Export CSV</button>
+        </div>
+        <div class="filter-bar">
+          <button class="filter-pill active" onclick="filterReqs(this,'all')">ALL (68)</button>
+          <button class="filter-pill" onclick="filterReqs(this,'open')">OPEN (14)</button>
+          <button class="filter-pill" onclick="filterReqs(this,'review')">IN REVIEW (6)</button>
+          <button class="filter-pill" onclick="filterReqs(this,'critical')">CRITICAL (3)</button>
+          <button class="filter-pill" onclick="filterReqs(this,'resolved')">RESOLVED (45)</button>
+        </div>
+        <div style="display:flex;gap:.75rem;margin-bottom:1rem">
+          <input type="text" class="form-input" placeholder="Search by ID, village, issue..." style="flex:1" />
+          <select class="form-select" style="width:auto;min-width:150px"><option>All Districts</option><option>Amravati</option><option>Yavatmal</option><option>Akola</option></select>
+          <select class="form-select" style="width:auto;min-width:130px"><option>All Types</option><option>Well Dry</option><option>No Tanker</option><option>Pipeline</option><option>Quality</option></select>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Report ID</th><th>Citizen</th><th>Issue Type</th><th>Village / District</th><th>Date</th><th>Priority</th><th>Status</th><th>Assigned To</th><th>Actions</th></tr></thead>
+          <tbody id="req-table">
+            <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--blue)">#R-1042</td><td>R. Deshmukh</td><td>Well Dry</td><td>Warud, Amravati</td><td>Mar 8</td><td><span class="priority-tag p-high">HIGH</span></td><td><span class="status-badge s-open">OPEN</span></td><td>—</td><td><button class="btn btn-sm btn-primary" onclick="assignRequest(1042)">Assign</button></td></tr>
+            <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--blue)">#R-1041</td><td>S. Wankhede</td><td>No Tanker</td><td>Morshi, Amravati</td><td>Mar 7</td><td><span class="priority-tag p-high">HIGH</span></td><td><span class="status-badge s-critical">CRITICAL</span></td><td>Escalated DC</td><td><button class="btn btn-sm btn-outline">View</button></td></tr>
+            <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--blue)">#R-1040</td><td>P. Kale</td><td>Hand Pump</td><td>Chandur, Amravati</td><td>Mar 7</td><td><span class="priority-tag p-med">MED</span></td><td><span class="status-badge s-assigned">ASSIGNED</span></td><td>Patil (Field)</td><td><button class="btn btn-sm btn-success" onclick="resolve(1040)">Resolve</button></td></tr>
+            <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--blue)">#R-1039</td><td>A. Bhatt</td><td>Pipeline</td><td>Daryapur, Amravati</td><td>Mar 6</td><td><span class="priority-tag p-med">MED</span></td><td><span class="status-badge s-review">REVIEW</span></td><td>Under review</td><td><button class="btn btn-sm btn-primary" onclick="assignRequest(1039)">Assign</button></td></tr>
+            <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--blue)">#R-1038</td><td>R. Deshmukh</td><td>No Tanker</td><td>Warud, Amravati</td><td>Mar 2</td><td><span class="priority-tag p-high">HIGH</span></td><td><span class="status-badge s-resolved">RESOLVED</span></td><td>Field Team A</td><td><button class="btn btn-sm btn-outline">View</button></td></tr>
+            <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--blue)">#R-1037</td><td>V. Mandal</td><td>Quality</td><td>Anjangaon, Amravati</td><td>Mar 1</td><td><span class="priority-tag p-low">LOW</span></td><td><span class="status-badge s-assigned">ASSIGNED</span></td><td>Lab Team</td><td><button class="btn btn-sm btn-success" onclick="resolve(1037)">Resolve</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- DISTRICT ANALYTICS -->
+    <div class="page-view" id="page-districts">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title"><div class="card-title-left"><div class="dot" style="background:var(--cyan)"></div> Groundwater Levels — All Districts</div></div>
+          <div class="chart-wrap"><canvas id="gwChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><div class="card-title-left"><div class="dot" style="background:var(--amber)"></div> Rainfall vs Depletion Correlation</div></div>
+          <div class="chart-wrap"><canvas id="rainChart"></canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-title-left"><div class="dot" style="background:var(--blue)"></div> District Summary Table</div></div>
+        <table class="data-table">
+          <thead><tr><th>District</th><th>Avg Depth (m)</th><th>Change (MoM)</th><th>Wells Monitored</th><th>Active Reports</th><th>Risk Level</th><th>Tankers Deployed</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Amravati</strong></td><td style="font-family:'JetBrains Mono',monospace">−63.4</td><td style="color:var(--rose);font-family:'JetBrains Mono',monospace">▼ −2.1</td><td>72</td><td>14</td><td><span class="status-badge s-critical">CRITICAL</span></td><td>12</td></tr>
+            <tr><td><strong>Yavatmal</strong></td><td style="font-family:'JetBrains Mono',monospace">−72.1</td><td style="color:var(--rose);font-family:'JetBrains Mono',monospace">▼ −3.2</td><td>85</td><td>21</td><td><span class="status-badge s-critical">CRITICAL</span></td><td>18</td></tr>
+            <tr><td><strong>Akola</strong></td><td style="font-family:'JetBrains Mono',monospace">−58.7</td><td style="color:var(--amber);font-family:'JetBrains Mono',monospace">→ −0.5</td><td>61</td><td>8</td><td><span class="status-badge s-review">HIGH</span></td><td>7</td></tr>
+            <tr><td><strong>Buldhana</strong></td><td style="font-family:'JetBrains Mono',monospace">−55.8</td><td style="color:var(--rose);font-family:'JetBrains Mono',monospace">▼ −1.8</td><td>58</td><td>11</td><td><span class="status-badge s-review">HIGH</span></td><td>9</td></tr>
+            <tr><td><strong>Wardha</strong></td><td style="font-family:'JetBrains Mono',monospace">−41.2</td><td style="color:var(--amber);font-family:'JetBrains Mono',monospace">→ +0.3</td><td>44</td><td>4</td><td><span class="status-badge s-open">MODERATE</span></td><td>3</td></tr>
+            <tr><td><strong>Nagpur</strong></td><td style="font-family:'JetBrains Mono',monospace">−36.5</td><td style="color:var(--green);font-family:'JetBrains Mono',monospace">▲ +1.2</td><td>62</td><td>2</td><td><span class="status-badge s-open">MODERATE</span></td><td>2</td></tr>
+            <tr><td><strong>Washim</strong></td><td style="font-family:'JetBrains Mono',monospace">−52.3</td><td style="color:var(--rose);font-family:'JetBrains Mono',monospace">▼ −1.1</td><td>39</td><td>7</td><td><span class="status-badge s-review">HIGH</span></td><td>5</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- AI FORECASTS -->
+    <div class="page-view" id="page-forecast">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title"><div class="card-title-left"><div class="dot" style="background:var(--purple)"></div> 90-Day Groundwater Forecast (Ensemble ML+DL)</div></div>
+          <div class="chart-wrap" style="height:240px"><canvas id="forecast90Chart"></canvas></div>
+          <div style="margin-top:1rem;padding:.85rem;background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.2);border-radius:10px;font-size:.8rem;color:var(--muted)">
+            <strong style="color:var(--purple)">Model Ensemble:</strong> XGBoost (38%) + Random Forest (24%) + LSTM (26%) + GRU (12%) · R² = 0.89 · RMSE = 0.43m
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><div class="card-title-left"><div class="dot" style="background:var(--blue)"></div> Feature Importance (XGBoost SHAP)</div></div>
+          <div class="chart-wrap" style="height:240px"><canvas id="shapChart"></canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-title-left"><div class="dot" style="background:var(--rose)"></div> Predicted Crisis Zones — Next 90 Days</div></div>
+        <table class="data-table">
+          <thead><tr><th>District</th><th>Current (m)</th><th>Predicted May (m)</th><th>Confidence</th><th>Recommended Action</th><th>Alert Status</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Yavatmal</strong></td><td style="font-family:'JetBrains Mono',monospace">−72.1</td><td style="font-family:'JetBrains Mono',monospace;color:var(--rose)">−78.4</td><td style="font-family:'JetBrains Mono',monospace;color:var(--green)">96%</td><td>Emergency tanker + well deepening</td><td><span class="status-badge s-critical">ISSUED</span></td></tr>
+            <tr><td><strong>Amravati</strong></td><td style="font-family:'JetBrains Mono',monospace">−63.4</td><td style="font-family:'JetBrains Mono',monospace;color:var(--rose)">−71.2</td><td style="font-family:'JetBrains Mono',monospace;color:var(--green)">94%</td><td>Pre-position tankers, issue advisory</td><td><span class="status-badge s-review">DRAFT</span></td></tr>
+            <tr><td><strong>Akola</strong></td><td style="font-family:'JetBrains Mono',monospace">−58.7</td><td style="font-family:'JetBrains Mono',monospace;color:var(--amber)">−64.1</td><td style="font-family:'JetBrains Mono',monospace;color:var(--amber)">87%</td><td>Monitor weekly, prepare contingency</td><td><span class="status-badge s-open">WATCH</span></td></tr>
+            <tr><td><strong>Buldhana</strong></td><td style="font-family:'JetBrains Mono',monospace">−55.8</td><td style="font-family:'JetBrains Mono',monospace;color:var(--amber)">−61.5</td><td style="font-family:'JetBrains Mono',monospace;color:var(--amber)">82%</td><td>Monitor, no immediate action needed</td><td><span class="status-badge s-open">WATCH</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TASK ASSIGNMENT -->
+    <div class="page-view" id="page-assign">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title"><div class="card-title-left"><div class="dot" style="background:var(--cyan)"></div> Assign New Task</div></div>
+          <div class="form-group"><label class="form-label">REPORT ID</label><input class="form-input" placeholder="e.g. R-1042" /></div>
+          <div class="form-grid">
+            <div class="form-group"><label class="form-label">ASSIGN TO</label>
+              <select class="form-select">
+                <option>Field Engineer Patil</option><option>Lab Team Sharma</option><option>Field Team A</option>
+                <option>Field Team B</option><option>Plumbing Unit</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">DUE DATE</label><input type="date" class="form-input" /></div>
+          </div>
+          <div class="form-group"><label class="form-label">PRIORITY</label>
+            <select class="form-select"><option>High</option><option>Medium</option><option>Low</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">NOTES</label><textarea class="form-input" style="height:80px;resize:vertical" placeholder="Instructions for the field team..."></textarea></div>
+          <button class="btn btn-primary" onclick="alert('✅ Task assigned successfully!')">👥 Assign Task</button>
+        </div>
+        <div class="card">
+          <div class="card-title"><div class="card-title-left"><div class="dot" style="background:var(--green)"></div> Team Workload</div></div>
+          <div class="chart-wrap-sm"><canvas id="workloadChart"></canvas></div>
+          <table class="data-table" style="margin-top:1rem">
+            <thead><tr><th>Team Member</th><th>Active Tasks</th><th>Completed</th><th>Availability</th></tr></thead>
+            <tbody>
+              <tr><td>Field Eng. Patil</td><td>3</td><td>12</td><td><span class="status-badge s-review">BUSY</span></td></tr>
+              <tr><td>Lab Team Sharma</td><td>1</td><td>8</td><td><span class="status-badge s-resolved">AVAILABLE</span></td></tr>
+              <tr><td>Field Team A</td><td>4</td><td>22</td><td><span class="status-badge s-critical">OVERLOADED</span></td></tr>
+              <tr><td>Plumbing Unit</td><td>2</td><td>15</td><td><span class="status-badge s-review">BUSY</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TANKER SCHEDULE -->
+    <div class="page-view" id="page-tankers">
+      <div class="card">
+        <div class="card-title"><div class="card-title-left"><div class="dot" style="background:var(--amber)"></div> Active Tanker Routes — March 2026</div>
+          <button class="btn btn-primary btn-sm">+ Add Route</button>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Tanker ID</th><th>Route</th><th>Villages Covered</th><th>Schedule</th><th>Capacity (L)</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td style="font-family:'JetBrains Mono',monospace;color:var(--blue)">T-001</td><td>Amravati → Warud</td><td>Warud, Nandgaon, Pusad</td><td>Mon, Thu</td><td style="font-family:'JetBrains Mono',monospace">10,000</td><td><span class="status-badge s-resolved">ACTIVE</span></td></tr>
+            <tr><td style="font-family:'JetBrains Mono',monospace;color:var(--blue)">T-002</td><td>Yavatmal → Morshi</td><td>Morshi, Kalamb, Arni</td><td>Daily</td><td style="font-family:'JetBrains Mono',monospace">12,000</td><td><span class="status-badge s-resolved">ACTIVE</span></td></tr>
+            <tr><td style="font-family:'JetBrains Mono',monospace;color:var(--blue)">T-003</td><td>Akola → Murtizapur</td><td>Murtizapur, Akot</td><td>Tue, Fri</td><td style="font-family:'JetBrains Mono',monospace">8,000</td><td><span class="status-badge s-review">SCHEDULED</span></td></tr>
+            <tr><td style="font-family:'JetBrains Mono',monospace;color:var(--blue)">T-004</td><td>Emergency — Yavatmal</td><td>Pusad, Umarkhed</td><td>On-demand</td><td style="font-family:'JetBrains Mono',monospace">15,000</td><td><span class="status-badge s-critical">URGENT</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="page-view" id="page-reports">
+      <div class="grid-3">
+        <div class="card" style="text-align:center;cursor:pointer" onclick="alert('Generating Monthly Water Status Report...')">
+          <div style="font-size:2.5rem;margin-bottom:.75rem">📄</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:.4rem">Monthly Status Report</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem">District water status summary for March 2026</div>
+          <button class="btn btn-primary btn-sm">Generate PDF</button>
+        </div>
+        <div class="card" style="text-align:center;cursor:pointer" onclick="alert('Generating Crisis Prediction Report...')">
+          <div style="font-size:2.5rem;margin-bottom:.75rem">🤖</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:.4rem">AI Prediction Report</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem">90-day forecast with model confidence scores</div>
+          <button class="btn btn-primary btn-sm">Generate PDF</button>
+        </div>
+        <div class="card" style="text-align:center;cursor:pointer" onclick="alert('Generating Citizen Report Summary...')">
+          <div style="font-size:2.5rem;margin-bottom:.75rem">👥</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:.4rem">Citizen Request Report</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem">All requests, resolutions, and response time analysis</div>
+          <button class="btn btn-primary btn-sm">Generate CSV</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIVITY LOG -->
+    <div class="page-view" id="page-activity">
+      <div class="card">
+        <div class="card-title"><div class="card-title-left"><div class="dot" style="background:var(--muted)"></div> System Activity Log</div></div>
+        <table class="data-table">
+          <thead><tr><th>Timestamp</th><th>Actor</th><th>Action</th><th>Target</th><th>Details</th></tr></thead>
+          <tbody>
+            <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.72rem">Mar 11, 10:32</td><td>Officer Kulkarni</td><td style="color:var(--green)">RESOLVED</td><td>#R-1038</td><td>Tanker dispatched successfully</td></tr>
+            <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.72rem">Mar 11, 09:15</td><td>Officer Kulkarni</td><td style="color:var(--blue)">ASSIGNED</td><td>#R-1040</td><td>Assigned to Field Eng. Patil</td></tr>
+            <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.72rem">Mar 10, 06:00</td><td>🤖 AI System</td><td style="color:var(--rose)">ALERT</td><td>Yavatmal</td><td>Groundwater crossed −72m threshold</td></tr>
+            <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.72rem">Mar 9, 15:45</td><td>Officer Kulkarni</td><td style="color:var(--rose)">ESCALATED</td><td>#R-1041</td><td>Sent to District Collector</td></tr>
+            <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.72rem">Mar 8, 11:20</td><td>🤖 AI System</td><td style="color:var(--amber)">FORECAST</td><td>Amravati</td><td>90-day model run completed</td></tr>
+            <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.72rem">Mar 8, 09:00</td><td>Citizen Deshmukh</td><td style="color:var(--cyan)">SUBMITTED</td><td>#R-1042</td><td>New report: Well dry in Warud</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+function showPage(id, btn) {
+  document.querySelectorAll('.page-view').forEach(v => v.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const titles = {overview:'📊 Command Center',requests:'📋 All Requests',districts:'🗺️ District Analytics',forecast:'🤖 AI Forecasts',assign:'👥 Task Assignment',tankers:'🚛 Tanker Schedule',reports:'📈 Generate Reports',activity:'📝 Activity Log'};
+  document.getElementById('page-title').textContent = titles[id] || id;
+}
+function assignRequest(id) { alert(`✅ Report #R-${id} assigned to Field Engineer Patil\n\nNotification sent to citizen.`); }
+function resolve(id) { alert(`✅ Report #R-${id} marked as Resolved\n\nCitizen will be notified.`); }
+function escalate(id) { alert(`🚨 Report #R-${id} escalated to District Collector\n\nEmergency response initiated.`); }
+function filterReqs(btn, type) { document.querySelectorAll('.filter-pill').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
+
+const mono = { family:"'JetBrains Mono'" };
+const gridOpts = (c1='rgba(59,130,246,.06)') => ({
+  responsive:true, maintainAspectRatio:false,
+  plugins:{legend:{display:false}},
+  scales:{
+    x:{grid:{color:c1},ticks:{color:'#64748b',font:mono}},
+    y:{grid:{color:c1},ticks:{color:'#64748b',font:mono}}
+  }
+});
+
+new Chart(document.getElementById('catChart'),{
+  type:'doughnut',
+  data:{labels:['Well/Borewell','No Tanker','Pipeline','Hand Pump','Quality'],datasets:[{data:[22,18,12,9,7],backgroundColor:['#f43f5e','#f59e0b','#3b82f6','#22d3ee','#8b5cf6'],borderWidth:0}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#64748b',font:mono,padding:12}}}}
+});
+
+new Chart(document.getElementById('distChart'),{
+  type:'bar',
+  data:{
+    labels:['Yavatmal','Amravati','Akola','Buldhana','Washim','Wardha','Nagpur'],
+    datasets:[{data:[9.2,8.4,7.1,6.8,6.2,4.5,3.8],backgroundColor:['#f43f5e','#f43f5e','#f59e0b','#f59e0b','#f59e0b','#22d3ee','#10b981'],borderRadius:6}]
+  },
+  options:{...gridOpts(),plugins:{legend:{display:false}}}
+});
+
+new Chart(document.getElementById('gwChart'),{
+  type:'bar',
+  data:{
+    labels:['Yavatmal','Amravati','Akola','Buldhana','Washim','Wardha','Nagpur','Chandrapur','Bhandara'],
+    datasets:[{data:[72.1,63.4,58.7,55.8,52.3,41.2,36.5,32.1,28.4],backgroundColor:'rgba(34,211,238,.6)',borderRadius:5}]
+  },
+  options:{...gridOpts(),indexAxis:'y',scales:{x:{...gridOpts().scales.x},y:{...gridOpts().scales.y,ticks:{color:'#64748b',font:mono}}}}
+});
+
+new Chart(document.getElementById('rainChart'),{
+  type:'scatter',
+  data:{datasets:[{
+    data:[{x:580,y:-35},{x:620,y:-38},{x:490,y:-55},{x:450,y:-60},{x:720,y:-28},{x:680,y:-32},{x:410,y:-68},{x:380,y:-72},{x:530,y:-48}],
+    backgroundColor:'rgba(59,130,246,.7)',pointRadius:6
+  }]},
+  options:{...gridOpts(),plugins:{legend:{display:false}},scales:{
+    x:{...gridOpts().scales.x,title:{display:true,text:'Rainfall (mm)',color:'#64748b',font:mono}},
+    y:{...gridOpts().scales.y,title:{display:true,text:'Depth (m)',color:'#64748b',font:mono}}
+  }}
+});
+
+new Chart(document.getElementById('forecast90Chart'),{
+  type:'line',
+  data:{
+    labels:['Mar','Apr','May','Jun','Jul','Aug'],
+    datasets:[
+      {label:'Historical',data:[-63.4,-65,null,null,null,null],borderColor:'#22d3ee',tension:.4,pointRadius:3,borderDash:[4,4]},
+      {label:'Forecast',data:[null,-65,-71,-75,-70,-62],borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,.08)',fill:true,tension:.4,pointRadius:3},
+      {label:'Confidence Band',data:[null,-64,-69,-73,-68,-60],borderColor:'rgba(139,92,246,.3)',tension:.4,pointRadius:0,borderWidth:1}
+    ]
+  },
+  options:{...gridOpts(),plugins:{legend:{display:true,labels:{color:'#64748b',font:mono}}}}
+});
+
+new Chart(document.getElementById('shapChart'),{
+  type:'bar',
+  data:{
+    labels:['Prev Month Depth','Rainfall Lag (t-3)','Soil Moisture','Season','Rolling 3-mo Avg','NDVI','Temp Max'],
+    datasets:[{data:[0.31,0.24,0.18,0.11,0.08,0.05,0.03],backgroundColor:'rgba(139,92,246,.7)',borderRadius:4}]
+  },
+  options:{...gridOpts(),indexAxis:'y',plugins:{legend:{display:false}}}
+});
+
+new Chart(document.getElementById('workloadChart'),{
+  type:'bar',
+  data:{
+    labels:['Patil','Sharma','Team A','Plumbing'],
+    datasets:[
+      {label:'Active',data:[3,1,4,2],backgroundColor:'rgba(244,63,94,.7)',borderRadius:4},
+      {label:'Completed',data:[12,8,22,15],backgroundColor:'rgba(16,185,129,.4)',borderRadius:4}
+    ]
+  },
+  options:{...gridOpts(),plugins:{legend:{display:true,labels:{color:'#64748b',font:mono}}}}
+});
+</script>
+</body>
+</html>
