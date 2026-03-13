@@ -1,0 +1,154 @@
+AquaVidarbha Integration Checklist
+Branch: integration/user-dashboard-into-yogesh
+Purpose: Selectively import user-dashboard backend work into shared backend/ tree
+
+======================================================================
+0) PRE-CHECK
+======================================================================
+[ ] Confirm current branch
+    git rev-parse --abbrev-ref HEAD
+    Expected: integration/user-dashboard-into-yogesh
+
+[ ] Confirm working tree
+    git status -sb
+
+======================================================================
+1) WHAT TO IMPORT VS SKIP (from origin/user-dashboard)
+======================================================================
+SOURCE ROOT on user branch: user-dashboard-go/
+TARGET ROOT on integration branch: backend/
+
+KEEP / REVIEW FOR MERGE:
+[ ] user-dashboard-go/internal/handler/health.go
+[ ] user-dashboard-go/internal/handler/router.go
+[ ] user-dashboard-go/internal/repository/db.go
+[ ] user-dashboard-go/internal/repository/redis.go
+[ ] user-dashboard-go/migrations/*.sql  (only if better than backend/migrations/schema.sql plan)
+[ ] user-dashboard-go/pkg/response/response.go
+
+MOSTLY SKIP (already exists in backend):
+[ ] user-dashboard-go/cmd/server/main.go
+[ ] user-dashboard-go/docker-compose.yml
+[ ] user-dashboard-go/go.mod
+[ ] user-dashboard-go/go.sum
+[ ] user-dashboard-go/internal/config/config.go
+[ ] user-dashboard-go/internal/middleware/cors.go
+[ ] user-dashboard-go/internal/middleware/logger.go
+[ ] user-dashboard-go/internal/middleware/recovery.go
+
+ALWAYS SKIP:
+[ ] user-dashboard-go/tmp/main.exe
+
+======================================================================
+2) SAFE DRY RUN (NO COMMIT)
+======================================================================
+[ ] Run dry merge to preview conflicts
+    git merge --no-commit --no-ff origin/user-dashboard
+
+[ ] If duplicate backend root appears heavily, abort and continue selective import
+    git merge --abort
+
+======================================================================
+3) SELECTIVE IMPORT COMMANDS (NO FULL MERGE)
+======================================================================
+# Pull only the candidate files from source branch into working tree.
+# You will then move/adapt to backend/ structure.
+
+[ ] Import candidate handler files
+    git checkout origin/user-dashboard -- user-dashboard-go/internal/handler/health.go
+    git checkout origin/user-dashboard -- user-dashboard-go/internal/handler/router.go
+
+[ ] Import candidate repository files
+    git checkout origin/user-dashboard -- user-dashboard-go/internal/repository/db.go
+    git checkout origin/user-dashboard -- user-dashboard-go/internal/repository/redis.go
+
+[ ] Import candidate response package
+    git checkout origin/user-dashboard -- user-dashboard-go/pkg/response/response.go
+
+[ ] Optional: import migrations for comparison only
+    git checkout origin/user-dashboard -- user-dashboard-go/migrations
+
+======================================================================
+4) MOVE/MAP INTO SHARED BACKEND TREE
+======================================================================
+[ ] Compare and merge logic from:
+    user-dashboard-go/internal/handler/health.go
+    INTO backend/internal/handler/health.go (create if missing)
+
+[ ] Compare and merge routing logic from:
+    user-dashboard-go/internal/handler/router.go
+    INTO backend/internal/handler/router.go (create if missing)
+
+[ ] Merge DB repo logic from:
+    user-dashboard-go/internal/repository/db.go
+    INTO backend/internal/repository/db.go (create repository folder if needed)
+
+[ ] Merge Redis repo logic from:
+    user-dashboard-go/internal/repository/redis.go
+    INTO backend/internal/repository/redis.go
+
+[ ] Merge response envelope from:
+    user-dashboard-go/pkg/response/response.go
+    INTO backend/pkg/response/response.go
+
+[ ] Migration strategy decision (IMPORTANT)
+    Option A: Keep single baseline schema at backend/migrations/schema.sql for now.
+    Option B: Move to numbered migrations (001..010) and retire schema.sql.
+    Choose one source of truth only.
+
+======================================================================
+5) CLEANUP
+======================================================================
+[ ] Ensure these are ignored by .gitignore:
+    tmp/
+    *.exe
+    *.out
+
+[ ] Remove accidentally tracked binary if present
+    git rm --cached user-dashboard-go/tmp/main.exe
+
+[ ] Remove temporary imported duplicate root if no longer needed
+    # Example after content is merged:
+    # git rm -r user-dashboard-go
+
+======================================================================
+6) VALIDATION
+======================================================================
+[ ] Go module sanity
+    cd backend
+    go mod tidy
+
+[ ] Build
+    go build ./...
+
+[ ] Tests
+    go test ./...
+
+[ ] Route sanity checks (manual)
+    /api/v1/health
+    /api/v1/auth/login
+    /api/v1/user/*
+    /api/v1/gov/*
+    /api/v1/admin/*
+
+======================================================================
+7) COMMIT PLAN
+======================================================================
+[ ] Commit 1: integration scaffolding + ignores + router wire-up
+[ ] Commit 2: user-dashboard selective import into backend/internal
+[ ] Commit 3: migration unification + cleanup of duplicate root
+
+Suggested commit messages:
+- chore(integration): add selective import guardrails and ignore build artifacts
+- feat(user-backend): import user-dashboard handlers/repos into shared backend tree
+- chore(db): unify migration strategy and remove duplicate backend root
+
+======================================================================
+8) FINAL MERGE TARGET
+======================================================================
+[ ] Open PR from integration/user-dashboard-into-yogesh -> yogesh
+[ ] Review checklist:
+    - no duplicate backend project roots
+    - no binary artifacts
+    - single DB schema source of truth
+    - role-based routes compile and pass tests

@@ -57,25 +57,7 @@ func main() {
 
 	authService := service.NewAuthService(dbPool, cfg.Auth.JWTSecret, cfg.Auth.JWTTTLHours)
 	authHandler := handler.NewAuthHandler(authService)
-
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status": "ok",
-		})
-	})
-
-	r.POST("/api/v1/auth/login", authHandler.Login)
-
-	adminGroup := r.Group("/api/v1/admin")
-	adminGroup.Use(middleware.Auth(cfg.Auth.JWTSecret), middleware.RequireRole("admin"))
-	adminGroup.GET("/me", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"id":    c.GetInt64(middleware.ContextUserIDKey),
-			"name":  c.GetString(middleware.ContextNameKey),
-			"email": c.GetString(middleware.ContextEmailKey),
-			"role":  c.GetString(middleware.ContextRoleKey),
-		})
-	})
+	handler.RegisterRoutes(r, authHandler, cfg.Auth.JWTSecret)
 
 	server := &http.Server{
 		Addr:              fmt.Sprintf(":%s", cfg.Server.Port),
