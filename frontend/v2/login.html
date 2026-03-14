@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AquaVidarbha — Officer Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #06080d;
+      --surface: #0d1117;
+      --card: rgba(13,17,23,0.85);
+      --border: rgba(56,189,248,0.08);
+      --border-hover: rgba(56,189,248,0.2);
+      --neon-cyan: #22d3ee;
+      --neon-blue: #3b82f6;
+      --neon-purple: #a855f7;
+      --neon-green: #34d399;
+      --neon-amber: #fbbf24;
+      --neon-rose: #fb7185;
+      --text: #e2e8f0;
+      --text-dim: #64748b;
+      --text-muted: #475569;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    #cursorGlow {
+      position: fixed; width: 400px; height: 400px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(34,211,238,0.06) 0%, transparent 70%);
+      pointer-events: none; z-index: 9999; transform: translate(-50%, -50%);
+    }
+    #particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+    .login-container {
+      position: relative; z-index: 2; width: 100%; max-width: 440px; padding: 0 1.5rem;
+    }
+    .login-header {
+      text-align: center; margin-bottom: 2rem;
+    }
+    .login-logo {
+      display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.4rem;
+      text-decoration: none; color: var(--text); margin-bottom: 0.5rem;
+    }
+    .login-logo-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 25px rgba(34,211,238,0.4);
+    }
+    .neon-text { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .login-subtitle { font-size: 0.9rem; color: var(--text-dim); margin-top: 0.5rem; }
+
+    .login-card {
+      background: var(--card);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2rem;
+      transition: border-color 0.3s;
+    }
+    .login-card:hover { border-color: var(--border-hover); }
+
+    .role-tabs {
+      display: flex; gap: 8px; margin-bottom: 1.75rem;
+    }
+    .role-tab {
+      flex: 1; padding: 12px; border-radius: 12px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-dim); font-family: 'Outfit', sans-serif;
+      font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .role-tab:hover { border-color: var(--border-hover); color: var(--text); }
+    .role-tab.active-gov {
+      background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.3);
+      color: var(--neon-blue);
+    }
+    .role-tab.active-admin {
+      background: rgba(168,85,247,0.1); border-color: rgba(168,85,247,0.3);
+      color: var(--neon-purple);
+    }
+
+    .form-group { margin-bottom: 1.25rem; }
+    .form-label {
+      display: block; font-size: 0.78rem; font-weight: 600; margin-bottom: 0.4rem;
+      color: var(--text-dim); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .form-input-wrap {
+      position: relative; display: flex; align-items: center;
+    }
+    .form-input-wrap i {
+      position: absolute; left: 14px; color: var(--text-muted); pointer-events: none;
+    }
+    .form-input {
+      width: 100%; padding: 12px 14px 12px 44px; border-radius: 12px;
+      border: 1px solid var(--border); background: rgba(255,255,255,0.04);
+      color: var(--text); font-family: 'Outfit', sans-serif; font-size: 0.9rem;
+      outline: none; transition: all 0.3s;
+    }
+    .form-input:focus { border-color: var(--neon-cyan); box-shadow: 0 0 0 3px rgba(34,211,238,0.1); }
+    .form-input::placeholder { color: var(--text-muted); }
+
+    .login-btn {
+      width: 100%; padding: 14px; border-radius: 12px; border: none; cursor: pointer;
+      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+      color: #06080d; font-family: 'Outfit', sans-serif; font-weight: 700;
+      font-size: 0.95rem; transition: all 0.3s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .login-btn:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(34,211,238,0.4); }
+    .login-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .login-btn.admin-theme { background: linear-gradient(135deg, var(--neon-purple), var(--neon-rose)); }
+
+    .login-error {
+      display: none; padding: 10px 14px; border-radius: 10px; margin-bottom: 1rem;
+      background: rgba(251,113,133,0.1); border: 1px solid rgba(251,113,133,0.2);
+      color: var(--neon-rose); font-size: 0.82rem; text-align: center;
+    }
+    .login-error.show { display: block; animation: shake 0.4s ease; }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+    .login-footer {
+      text-align: center; margin-top: 1.5rem;
+    }
+    .login-footer a {
+      color: var(--neon-cyan); text-decoration: none; font-size: 0.85rem; font-weight: 500;
+      transition: color 0.2s; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .login-footer a:hover { color: var(--text); }
+
+    .demo-creds {
+      margin-top: 1.5rem; padding: 14px; border-radius: 12px;
+      background: rgba(34,211,238,0.04); border: 1px solid rgba(34,211,238,0.1);
+      font-size: 0.75rem; color: var(--text-dim);
+    }
+    .demo-creds strong { color: var(--neon-cyan); }
+    .demo-creds .mono { font-family: 'JetBrains Mono', monospace; color: var(--text); }
+
+    .back-link {
+      position: fixed; top: 1.5rem; left: 1.5rem; z-index: 10;
+      display: flex; align-items: center; gap: 8px;
+      color: var(--text-dim); text-decoration: none; font-size: 0.85rem; font-weight: 500;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--neon-cyan); }
+  </style>
+</head>
+<body>
+
+<div id="cursorGlow"></div>
+<canvas id="particles"></canvas>
+
+<a href="index.html" class="back-link"><i data-lucide="arrow-left" style="width:18px;height:18px"></i> Back to Home</a>
+
+<div class="login-container">
+  <div class="login-header">
+    <a href="index.html" class="login-logo">
+      <span class="login-logo-icon"><i data-lucide="droplets" style="width:22px;height:22px;color:#06080d"></i></span>
+      Aqua<span class="neon-text">Vidarbha</span>
+    </a>
+    <div class="login-subtitle">Authorized Personnel Access</div>
+  </div>
+
+  <div class="login-card">
+    <div class="role-tabs">
+      <button class="role-tab active-gov" id="tab-gov" onclick="switchRole('gov')">
+        <i data-lucide="landmark" style="width:16px;height:16px"></i> Government Officer
+      </button>
+      <button class="role-tab" id="tab-admin" onclick="switchRole('admin')">
+        <i data-lucide="shield" style="width:16px;height:16px"></i> Administrator
+      </button>
+    </div>
+
+    <div class="login-error" id="loginError">Invalid credentials. Please try again.</div>
+
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label class="form-label">Login ID</label>
+        <div class="form-input-wrap">
+          <i data-lucide="user" style="width:18px;height:18px"></i>
+          <input type="text" class="form-input" id="loginId" placeholder="Enter your login ID" required autocomplete="username" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div class="form-input-wrap">
+          <i data-lucide="lock" style="width:18px;height:18px"></i>
+          <input type="password" class="form-input" id="loginPass" placeholder="Enter your password" required autocomplete="current-password" />
+        </div>
+      </div>
+      <button type="submit" class="login-btn" id="loginBtn">
+        <i data-lucide="log-in" style="width:18px;height:18px"></i>
+        <span id="loginBtnText">Sign In as Officer</span>
+      </button>
+    </form>
+
+    <div class="demo-creds">
+      <strong>Demo Credentials</strong><br/>
+      <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div>
+          <div style="font-size:0.68rem;color:var(--neon-blue);margin-bottom:2px">GOV OFFICER</div>
+          <div>ID: <span class="mono">officer1</span></div>
+          <div>Pass: <span class="mono">aqua2026</span></div>
+        </div>
+        <div>
+          <div style="font-size:0.68rem;color:var(--neon-purple);margin-bottom:2px">ADMIN</div>
+          <div>ID: <span class="mono">admin</span></div>
+          <div>Pass: <span class="mono">admin2026</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="login-footer">
+    <a href="dashboard-user.html"><i data-lucide="globe-2" style="width:16px;height:16px"></i> Public Dashboard (No Login Required)</a>
+  </div>
+</div>
+
+<script>
+lucide.createIcons();
+
+// Cursor glow
+const glow = document.getElementById('cursorGlow');
+document.addEventListener('mousemove', e => { glow.style.left = e.clientX + 'px'; glow.style.top = e.clientY + 'px'; });
+
+// Particles
+(function() {
+  const canvas = document.getElementById('particles');
+  const ctx = canvas.getContext('2d');
+  let w, h, particles = [];
+  function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+  class P {
+    constructor() { this.reset(); }
+    reset() { this.x=Math.random()*w; this.y=Math.random()*h; this.vx=(Math.random()-0.5)*0.3; this.vy=(Math.random()-0.5)*0.3; this.r=Math.random()*1.5+0.5; this.a=Math.random()*0.3+0.1; }
+    update() { this.x+=this.vx; this.y+=this.vy; if(this.x<0||this.x>w)this.vx*=-1; if(this.y<0||this.y>h)this.vy*=-1; }
+    draw() { ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.fillStyle=`rgba(34,211,238,${this.a})`; ctx.fill(); }
+  }
+  for(let i=0;i<50;i++) particles.push(new P());
+  function animate() {
+    ctx.clearRect(0,0,w,h); particles.forEach(p=>{p.update();p.draw();});
+    for(let i=0;i<particles.length;i++) for(let j=i+1;j<particles.length;j++){
+      const dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<120){ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);ctx.lineTo(particles[j].x,particles[j].y);ctx.strokeStyle=`rgba(34,211,238,${0.04*(1-d/120)})`;ctx.stroke();}
+    }
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+// Role switching
+let currentRole = 'gov';
+function switchRole(role) {
+  currentRole = role;
+  const tabGov = document.getElementById('tab-gov');
+  const tabAdmin = document.getElementById('tab-admin');
+  const btn = document.getElementById('loginBtn');
+  const btnText = document.getElementById('loginBtnText');
+  document.getElementById('loginError').classList.remove('show');
+
+  tabGov.className = 'role-tab' + (role === 'gov' ? ' active-gov' : '');
+  tabAdmin.className = 'role-tab' + (role === 'admin' ? ' active-admin' : '');
+  btn.className = 'login-btn' + (role === 'admin' ? ' admin-theme' : '');
+  btnText.textContent = role === 'gov' ? 'Sign In as Officer' : 'Sign In as Admin';
+}
+
+// Login handler
+function handleLogin(e) {
+  e.preventDefault();
+  const id = document.getElementById('loginId').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+
+  // Demo credentials check
+  if (currentRole === 'gov' && id === 'officer1' && pass === 'aqua2026') {
+    sessionStorage.setItem('aqua_role', 'gov');
+    sessionStorage.setItem('aqua_user', 'Officer Kulkarni');
+    window.location.href = 'dashboard-gov.html';
+    return;
+  }
+  if (currentRole === 'admin' && id === 'admin' && pass === 'admin2026') {
+    sessionStorage.setItem('aqua_role', 'admin');
+    sessionStorage.setItem('aqua_user', 'Admin Sharma');
+    window.location.href = 'dashboard-admin.html';
+    return;
+  }
+
+  errEl.classList.remove('show');
+  void errEl.offsetWidth;
+  errEl.classList.add('show');
+}
+</script>
+</body>
+</html>

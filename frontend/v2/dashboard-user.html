@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>AquaVidarbha — Water Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg:#06080d;--surface:#0d1117;--card:rgba(13,17,23,.85);--border:rgba(56,189,248,.12);--border-soft:rgba(255,255,255,.06);
+      --neon-cyan:#22d3ee;--neon-blue:#3b82f6;--neon-purple:#a855f7;--neon-green:#34d399;--neon-amber:#fbbf24;--neon-rose:#fb7185;
+      --text:#e2e8f0;--text-dim:#64748b;
+      --sidebar-w:260px;--sidebar-collapsed:72px;
+    }
+    html{scroll-behavior:smooth}
+    body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+    body::before{content:'';position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(34,211,238,.015) 1px,transparent 1px),linear-gradient(90deg,rgba(34,211,238,.015) 1px,transparent 1px);background-size:50px 50px;pointer-events:none}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
+    .mono{font-family:'JetBrains Mono',monospace}
+
+    /* SIDEBAR */
+    #sidebar{width:var(--sidebar-w);background:rgba(6,8,13,.96);border-right:1px solid var(--border-soft);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:50;backdrop-filter:blur(20px);transition:width .3s cubic-bezier(.4,0,.2,1);overflow:hidden}
+    #sidebar.collapsed{width:var(--sidebar-collapsed)}
+    .sidebar-header{padding:1.25rem;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:.75rem;min-height:65px}
+    .sidebar-logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--neon-cyan),var(--neon-blue));display:flex;align-items:center;justify-content:center;box-shadow:0 0 20px rgba(34,211,238,.3);flex-shrink:0}
+    .sidebar-brand{white-space:nowrap;overflow:hidden}
+    .sidebar-brand-name{font-weight:800;font-size:1.1rem}.sidebar-brand-sub{font-size:.6rem;color:var(--neon-cyan);margin-top:1px;letter-spacing:.05em}
+    #sidebar.collapsed .sidebar-brand,#sidebar.collapsed .nav-label,#sidebar.collapsed .nav-section,#sidebar.collapsed .user-info,#sidebar.collapsed .nav-badge{display:none}
+    .sidebar-nav{flex:1;padding:.75rem;display:flex;flex-direction:column;gap:3px;overflow-y:auto;overflow-x:hidden}
+    .nav-section{font-size:.62rem;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:var(--text-dim);padding:.85rem .5rem .3rem;white-space:nowrap}
+    .nav-item{display:flex;align-items:center;gap:.75rem;padding:.7rem .85rem;border-radius:12px;font-size:.88rem;font-weight:500;color:var(--text-dim);cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:all .2s;text-decoration:none;white-space:nowrap;position:relative}
+    .nav-item:hover{background:rgba(34,211,238,.05);color:var(--text)}
+    .nav-item.active{background:rgba(34,211,238,.1);color:var(--neon-cyan);font-weight:700;border:1px solid rgba(34,211,238,.18)}
+    .nav-item i{flex-shrink:0}
+    .nav-badge{margin-left:auto;padding:2px 8px;border-radius:50px;font-size:.65rem;font-weight:700;background:rgba(251,113,133,.15);color:var(--neon-rose);border:1px solid rgba(251,113,133,.25)}
+    .sidebar-bottom{padding:.75rem;border-top:1px solid var(--border-soft)}
+    .user-card{display:flex;align-items:center;gap:.75rem;padding:.75rem;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid var(--border-soft)}
+    .user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--neon-cyan),var(--neon-blue));display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .user-name{font-size:.85rem;font-weight:600}.user-role{font-size:.68rem;color:var(--neon-cyan)}
+
+    /* MAIN */
+    #main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;position:relative;z-index:1;transition:margin-left .3s cubic-bezier(.4,0,.2,1)}
+    #main.expanded{margin-left:var(--sidebar-collapsed)}
+    .topbar{padding:.75rem 1.5rem;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between;background:rgba(6,8,13,.8);backdrop-filter:blur(20px);position:sticky;top:0;z-index:10}
+    .topbar-left{display:flex;align-items:center;gap:1rem}
+    .topbar-toggle{background:none;border:1px solid var(--border-soft);border-radius:8px;padding:6px 8px;cursor:pointer;color:var(--text-dim);transition:all .2s;display:flex;align-items:center;justify-content:center}
+    .topbar-toggle:hover{border-color:var(--neon-cyan);color:var(--neon-cyan)}
+    .page-title{font-size:1.05rem;font-weight:700;display:flex;align-items:center;gap:8px}
+    .topbar-right{display:flex;align-items:center;gap:.75rem}
+    .badge-live{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:50px;font-size:.72rem;font-weight:600;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);color:var(--neon-green)}
+    .badge-live::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--neon-green);animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(52,211,153,.5)}70%{box-shadow:0 0 0 8px rgba(52,211,153,0)}}
+    .topbar-btn{padding:6px 14px;border-radius:8px;border:1px solid var(--border-soft);background:none;color:var(--text-dim);font-size:.8rem;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+    .topbar-btn:hover{border-color:var(--neon-cyan);color:var(--neon-cyan)}
+
+    /* CONTENT */
+    .content{padding:1.5rem;flex:1}
+    .page-view{display:none;animation:fadeSlide .35s ease}.page-view.active{display:block}
+    @keyframes fadeSlide{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+    /* GRID */
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem}
+    .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.25rem;margin-bottom:1.25rem}
+    .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
+
+    /* CARDS */
+    .card{background:rgba(13,17,23,.6);backdrop-filter:blur(16px);border:1px solid var(--border-soft);border-radius:16px;padding:1.5rem;transition:border-color .3s}
+    .card:hover{border-color:var(--border)}
+    .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem}
+    .card-title{font-size:.92rem;font-weight:700;display:flex;align-items:center;gap:8px}
+    .card-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+    /* BIG STATUS METER - hero visual */
+    .water-meter{text-align:center;padding:2rem 1rem}
+    .meter-ring{width:180px;height:180px;border-radius:50%;margin:0 auto 1.25rem;position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column}
+    .meter-ring::before{content:'';position:absolute;inset:0;border-radius:50%;border:6px solid rgba(255,255,255,.04)}
+    .meter-ring::after{content:'';position:absolute;inset:0;border-radius:50%;border:6px solid transparent;border-top-color:var(--ring-color,var(--neon-cyan));border-right-color:var(--ring-color,var(--neon-cyan));animation:meterSpin 2s ease forwards}
+    @keyframes meterSpin{from{transform:rotate(0)}to{transform:rotate(var(--ring-deg,180deg))}}
+    .meter-depth{font-family:'JetBrains Mono',monospace;font-size:2.2rem;font-weight:800;line-height:1;position:relative;z-index:2}
+    .meter-unit{font-size:.8rem;color:var(--text-dim);margin-top:.2rem;position:relative;z-index:2}
+    .meter-label{font-size:1.1rem;font-weight:700;margin-bottom:.3rem}
+    .meter-sublabel{font-size:.82rem;color:var(--text-dim)}
+
+    /* SIMPLE STATUS CARDS */
+    .stat-card{padding:1.2rem;border-radius:14px;border:1px solid var(--border-soft);background:rgba(13,17,23,.5);text-align:center;transition:all .3s;cursor:pointer}
+    .stat-card:hover{transform:translateY(-3px);border-color:var(--border)}
+    .stat-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem}
+    .stat-val{font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:700;line-height:1}
+    .stat-label{font-size:.78rem;color:var(--text-dim);margin-top:.3rem}
+
+    /* ALERT BOX - bigger, clearer */
+    .alert-box{padding:1rem 1.25rem;border-radius:14px;margin-bottom:.85rem;display:flex;align-items:flex-start;gap:1rem;font-size:.88rem;line-height:1.6;transition:all .2s}
+    .alert-box:hover{transform:translateX(4px)}
+    .alert-critical{background:rgba(251,113,133,.06);border:1px solid rgba(251,113,133,.2)}
+    .alert-warn{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2)}
+    .alert-info{background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.2)}
+    .alert-success{background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.2)}
+    .alert-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .alert-title{font-weight:700;font-size:.95rem;margin-bottom:.15rem}
+    .alert-time{font-size:.7rem;color:var(--text-dim);margin-top:.35rem}
+
+    /* TABLE - simplified */
+    .data-table{width:100%;border-collapse:collapse;font-size:.85rem}
+    .data-table th{padding:.7rem .85rem;text-align:left;font-size:.72rem;color:var(--text-dim);letter-spacing:.05em;border-bottom:1px solid var(--border-soft);font-weight:600;text-transform:uppercase}
+    .data-table td{padding:.85rem .85rem;border-bottom:1px solid rgba(255,255,255,.03)}
+    .data-table tr:hover td{background:rgba(255,255,255,.02)}
+    .status-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:50px;font-size:.72rem;font-weight:700}
+    .s-safe{background:rgba(52,211,153,.12);color:var(--neon-green);border:1px solid rgba(52,211,153,.25)}
+    .s-warn{background:rgba(251,191,36,.12);color:var(--neon-amber);border:1px solid rgba(251,191,36,.25)}
+    .s-danger{background:rgba(251,113,133,.12);color:var(--neon-rose);border:1px solid rgba(251,113,133,.25)}
+    .s-info{background:rgba(34,211,238,.12);color:var(--neon-cyan);border:1px solid rgba(34,211,238,.25)}
+    .s-progress{background:rgba(251,191,36,.12);color:var(--neon-amber);border:1px solid rgba(251,191,36,.25)}
+    .s-resolved{background:rgba(52,211,153,.12);color:var(--neon-green);border:1px solid rgba(52,211,153,.25)}
+
+    /* FORM */
+    .form-group{margin-bottom:1.2rem}
+    .form-label{display:block;font-size:.78rem;font-weight:600;margin-bottom:.4rem;color:var(--text-dim);letter-spacing:.04em}
+    .form-input,.form-select,.form-textarea{width:100%;padding:.7rem 1rem;border-radius:12px;border:1px solid var(--border-soft);background:rgba(255,255,255,.04);color:var(--text);font-size:.88rem;font-family:'Outfit',sans-serif;transition:all .2s;outline:none}
+    .form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--neon-cyan);box-shadow:0 0 0 3px rgba(34,211,238,.1)}
+    .form-select option{background:#0d1117}
+    .form-textarea{resize:vertical;min-height:100px}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+
+    /* BUTTONS */
+    .btn{padding:.7rem 1.6rem;border-radius:12px;border:none;cursor:pointer;font-size:.9rem;font-weight:600;font-family:'Outfit',sans-serif;transition:all .25s;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary{background:linear-gradient(135deg,var(--neon-cyan),var(--neon-blue));color:#06080d}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 30px rgba(34,211,238,.35)}
+    .btn-lg{padding:.85rem 2rem;font-size:1rem;border-radius:14px}
+    .btn-ghost{background:none;border:1px solid var(--border-soft);color:var(--text-dim)}
+    .btn-ghost:hover{border-color:var(--neon-cyan);color:var(--neon-cyan)}
+
+    /* DETECT */
+    .detect-hero{text-align:center;padding:1rem 0 1.5rem}
+    .detect-hero h2{font-size:1.6rem;font-weight:800;margin-bottom:.3rem}
+    .detect-hero p{color:var(--text-dim);font-size:.9rem}
+    .detect-form-row{display:flex;gap:1rem;align-items:flex-end;justify-content:center;flex-wrap:wrap;margin:1.5rem 0}
+    .detect-field label{display:block;font-size:.72rem;font-weight:600;color:var(--text-dim);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.05em}
+    .detect-field input{width:160px;padding:.7rem 1rem;border-radius:12px;border:1px solid var(--border-soft);background:rgba(255,255,255,.05);color:var(--text);font-size:.9rem;font-family:'Outfit',sans-serif;outline:none;transition:all .2s}
+    .detect-field input:focus{border-color:var(--neon-cyan);box-shadow:0 0 0 3px rgba(34,211,238,.1)}
+
+    /* RESULT DISPLAY - big visual */
+    .detect-result{display:none;margin-top:1.5rem}
+    .result-hero{text-align:center;padding:2rem;border-radius:20px;margin-bottom:1.5rem;position:relative;overflow:hidden}
+    .result-hero::before{content:'';position:absolute;inset:0;opacity:.06;pointer-events:none}
+    .result-depth{font-family:'JetBrains Mono',monospace;font-size:3.5rem;font-weight:800;line-height:1}
+    .result-status{font-size:1.3rem;font-weight:800;margin-top:.5rem;text-transform:uppercase;letter-spacing:.08em}
+    .result-msg{font-size:.95rem;color:var(--text-dim);margin-top:.6rem;max-width:400px;margin-left:auto;margin-right:auto;line-height:1.6}
+    .result-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1.5rem}
+    .result-stat{text-align:center;padding:1rem;background:rgba(255,255,255,.03);border-radius:14px;border:1px solid var(--border-soft)}
+    .result-stat-val{font-family:'JetBrains Mono',monospace;font-size:1.4rem;font-weight:700}
+    .result-stat-label{font-size:.75rem;color:var(--text-dim);margin-top:.25rem}
+
+    /* FUTURE PREDICTION TIMELINE */
+    .prediction-timeline{display:flex;justify-content:space-between;gap:.75rem;margin-top:1.5rem;padding:0 .5rem}
+    .pred-month{flex:1;text-align:center;padding:.85rem .5rem;border-radius:14px;border:1px solid var(--border-soft);background:rgba(13,17,23,.5);transition:all .3s;position:relative}
+    .pred-month:hover{transform:translateY(-4px)}
+    .pred-month-name{font-size:.75rem;color:var(--text-dim);font-weight:600;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.05em}
+    .pred-month-depth{font-family:'JetBrains Mono',monospace;font-size:1.15rem;font-weight:700}
+    .pred-month-risk{font-size:.68rem;font-weight:700;margin-top:.3rem;padding:2px 8px;border-radius:50px;display:inline-block}
+    .pred-arrow{display:flex;align-items:center;color:var(--text-dim);font-size:1.2rem;flex-shrink:0}
+
+    /* MAP */
+    #waterMap{width:100%;height:520px;border-radius:14px;z-index:1}
+    .leaflet-popup-content-wrapper{background:rgba(255,255,255,.97)!important;border:1px solid rgba(59,130,246,.2)!important;border-radius:14px!important;color:#1e293b!important;backdrop-filter:blur(20px);box-shadow:0 8px 32px rgba(0,0,0,.15)!important}
+    .leaflet-popup-tip{background:rgba(255,255,255,.97)!important}
+    .map-legend{display:flex;gap:1rem;margin-top:1rem;justify-content:center;flex-wrap:wrap}
+    .legend-item{display:flex;align-items:center;gap:.4rem;font-size:.8rem;color:var(--text-dim)}
+    .legend-dot{width:14px;height:14px;border-radius:50%}
+
+    /* CHART */
+    .chart-wrap{position:relative;height:220px}
+
+    /* COMPLAINT TRACKER */
+    .tracker{display:flex;flex-direction:column}
+    .track-step{display:flex;gap:1rem;position:relative}
+    .track-step:not(:last-child) .track-line{position:absolute;left:17px;top:38px;width:2px;height:calc(100% - 8px);background:rgba(255,255,255,.06)}
+    .track-step.done .track-line{background:linear-gradient(var(--neon-green),rgba(255,255,255,.06))}
+    .track-step.current .track-line{background:linear-gradient(var(--neon-cyan),rgba(255,255,255,.06))}
+    .track-dot{width:36px;height:36px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;flex-shrink:0;z-index:1;margin-bottom:1.5rem}
+    .track-step.done .track-dot{border-color:var(--neon-green);background:rgba(52,211,153,.1);color:var(--neon-green)}
+    .track-step.current .track-dot{border-color:var(--neon-cyan);background:rgba(34,211,238,.1);color:var(--neon-cyan);animation:pulse 2s infinite}
+    .track-step.pending .track-dot{border-color:var(--border-soft);background:rgba(255,255,255,.03);color:var(--text-dim)}
+    .track-title{font-size:.9rem;font-weight:600;margin-bottom:.2rem}
+    .track-desc{font-size:.78rem;color:var(--text-dim);line-height:1.5}
+
+    @media(max-width:1024px){
+      #sidebar{transform:translateX(-100%)}#sidebar.open{transform:translateX(0)}
+      #main{margin-left:0!important}
+      .grid-2,.grid-3,.grid-4,.form-grid,.result-stats,.prediction-timeline{grid-template-columns:1fr;flex-direction:column}
+      .detect-field input{width:100%}
+    }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo"><i data-lucide="droplets" style="width:22px;height:22px;color:#06080d"></i></div>
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-name">Aqua<span style="background:linear-gradient(135deg,var(--neon-cyan),var(--neon-purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Vidarbha</span></div>
+      <div class="sidebar-brand-sub mono">WATER DASHBOARD</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <span class="nav-section">Main</span>
+    <button class="nav-item active" data-page="home"><i data-lucide="home" style="width:20px;height:20px"></i><span class="nav-label">Home</span></button>
+    <button class="nav-item" data-page="detect"><i data-lucide="radar" style="width:20px;height:20px"></i><span class="nav-label">Check Water Level</span></button>
+    <button class="nav-item" data-page="map"><i data-lucide="map-pin" style="width:20px;height:20px"></i><span class="nav-label">Water Map</span></button>
+    <span class="nav-section">Complaints</span>
+    <button class="nav-item" data-page="complaint"><i data-lucide="message-square-plus" style="width:20px;height:20px"></i><span class="nav-label">Report Problem</span></button>
+    <button class="nav-item" data-page="track"><i data-lucide="search" style="width:20px;height:20px"></i><span class="nav-label">Track Complaint</span></button>
+    <span class="nav-section">Updates</span>
+    <button class="nav-item" data-page="alerts"><i data-lucide="bell-ring" style="width:20px;height:20px"></i><span class="nav-label">Alerts</span><span class="nav-badge">3</span></button>
+    <a href="index.html" class="nav-item" style="margin-top:auto"><i data-lucide="arrow-left" style="width:20px;height:20px"></i><span class="nav-label">Back to Home</span></a>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="user-card">
+      <div class="user-avatar"><i data-lucide="user" style="width:18px;height:18px;color:#06080d"></i></div>
+      <div class="user-info"><div class="user-name">Public User</div><div class="user-role mono">CITIZEN</div></div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main id="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="topbar-toggle" id="toggleSidebar"><i data-lucide="panel-left" style="width:18px;height:18px"></i></button>
+      <div class="page-title" id="pageTitle"><i data-lucide="home" style="width:18px;height:18px"></i> Home</div>
+    </div>
+    <div class="topbar-right">
+      <span class="badge-live">LIVE DATA</span>
+      <button class="topbar-btn" onclick="document.getElementById('sidebar').classList.toggle('open')"><i data-lucide="menu" style="width:16px;height:16px"></i></button>
+    </div>
+  </div>
+  <div class="content">
+
+    <!-- ==================== HOME ==================== -->
+    <div class="page-view active" id="page-home">
+
+      <!-- Quick status cards -->
+      <div class="grid-4">
+        <div class="stat-card" onclick="goPage('detect')">
+          <div class="stat-icon" style="background:rgba(34,211,238,.1)"><i data-lucide="waves" style="width:24px;height:24px;color:var(--neon-cyan)"></i></div>
+          <div class="stat-val" style="color:var(--neon-cyan)">-63m</div>
+          <div class="stat-label">Water Level Now</div>
+        </div>
+        <div class="stat-card" onclick="goPage('alerts')">
+          <div class="stat-icon" style="background:rgba(251,113,133,.1)"><i data-lucide="alert-triangle" style="width:24px;height:24px;color:var(--neon-rose)"></i></div>
+          <div class="stat-val" style="color:var(--neon-rose)">3</div>
+          <div class="stat-label">Active Alerts</div>
+        </div>
+        <div class="stat-card" onclick="goPage('complaint')">
+          <div class="stat-icon" style="background:rgba(168,85,247,.1)"><i data-lucide="message-square-plus" style="width:24px;height:24px;color:var(--neon-purple)"></i></div>
+          <div class="stat-val" style="color:var(--neon-purple)">Report</div>
+          <div class="stat-label">File Complaint</div>
+        </div>
+        <div class="stat-card" onclick="goPage('track')">
+          <div class="stat-icon" style="background:rgba(52,211,153,.1)"><i data-lucide="search" style="width:24px;height:24px;color:var(--neon-green)"></i></div>
+          <div class="stat-val" style="color:var(--neon-green)">Track</div>
+          <div class="stat-label">My Complaints</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Current water status - visual meter -->
+        <div class="card">
+          <div class="water-meter">
+            <div class="meter-ring" style="--ring-color:var(--neon-amber);--ring-deg:230deg;border:1px solid var(--border-soft)">
+              <div class="meter-depth" style="color:var(--neon-amber)">-63.4</div>
+              <div class="meter-unit">meters deep</div>
+            </div>
+            <div class="meter-label">Your Area: Amravati</div>
+            <div class="meter-sublabel" style="color:var(--neon-amber);font-weight:700;font-size:.95rem">&#9888; WARNING ZONE</div>
+            <div style="font-size:.82rem;color:var(--text-dim);margin-top:.5rem;line-height:1.6">Water is going down. Store water for 30+ days. Government tanker comes weekly.</div>
+          </div>
+        </div>
+
+        <!-- Quick alerts -->
+        <div class="card">
+          <div class="card-header"><div class="card-title"><i data-lucide="bell-ring" style="width:18px;height:18px;color:var(--neon-rose)"></i> Latest Alerts</div></div>
+          <div class="alert-box alert-critical">
+            <div class="alert-icon" style="background:rgba(251,113,133,.1)"><i data-lucide="alert-circle" style="width:22px;height:22px;color:var(--neon-rose)"></i></div>
+            <div><div class="alert-title" style="color:var(--neon-rose)">Yavatmal — Water Very Low!</div>Water level is -72m. This is dangerous level. Emergency tankers are coming.<div class="alert-time mono">Today, 9:00 AM</div></div>
+          </div>
+          <div class="alert-box alert-warn">
+            <div class="alert-icon" style="background:rgba(251,191,36,.1)"><i data-lucide="alert-triangle" style="width:22px;height:22px;color:var(--neon-amber)"></i></div>
+            <div><div class="alert-title" style="color:var(--neon-amber)">Amravati — Water Going Down</div>Prediction says water will reach -71m by May. Start saving water now.<div class="alert-time mono">Mar 9, 2026</div></div>
+          </div>
+          <div class="alert-box alert-info">
+            <div class="alert-icon" style="background:rgba(34,211,238,.1)"><i data-lucide="droplets" style="width:22px;height:22px;color:var(--neon-cyan)"></i></div>
+            <div><div class="alert-title" style="color:var(--neon-cyan)">Tanker Schedule Updated</div>Next tanker to Warud: Thursday, March 13.<div class="alert-time mono">Mar 7, 2026</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simple district table -->
+      <div class="card">
+        <div class="card-header"><div class="card-title"><i data-lucide="map-pin" style="width:18px;height:18px;color:var(--neon-cyan)"></i> Water Level in All Districts</div><button class="btn btn-ghost" style="font-size:.78rem;padding:5px 14px" onclick="goPage('map')"><i data-lucide="map" style="width:14px;height:14px"></i> See Map</button></div>
+        <table class="data-table">
+          <thead><tr><th>District</th><th>Water Level</th><th>Going Up/Down?</th><th>How Bad?</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Yavatmal</strong></td><td class="mono">-72.1m</td><td style="color:var(--neon-rose)">&#8595; Going Down</td><td><span class="status-badge s-danger">DANGER</span></td></tr>
+            <tr><td><strong>Amravati</strong></td><td class="mono">-63.4m</td><td style="color:var(--neon-rose)">&#8595; Going Down</td><td><span class="status-badge s-danger">DANGER</span></td></tr>
+            <tr><td><strong>Akola</strong></td><td class="mono">-58.7m</td><td style="color:var(--neon-amber)">&#8594; Same</td><td><span class="status-badge s-warn">WARNING</span></td></tr>
+            <tr><td><strong>Buldhana</strong></td><td class="mono">-55.8m</td><td style="color:var(--neon-rose)">&#8595; Going Down</td><td><span class="status-badge s-warn">WARNING</span></td></tr>
+            <tr><td><strong>Washim</strong></td><td class="mono">-52.3m</td><td style="color:var(--neon-rose)">&#8595; Going Down</td><td><span class="status-badge s-warn">WARNING</span></td></tr>
+            <tr><td><strong>Wardha</strong></td><td class="mono">-41.2m</td><td style="color:var(--neon-cyan)">&#8594; Stable</td><td><span class="status-badge s-info">OK</span></td></tr>
+            <tr><td><strong>Nagpur</strong></td><td class="mono">-36.5m</td><td style="color:var(--neon-green)">&#8593; Going Up</td><td><span class="status-badge s-safe">SAFE</span></td></tr>
+            <tr><td><strong>Chandrapur</strong></td><td class="mono">-44.3m</td><td style="color:var(--neon-amber)">&#8594; Same</td><td><span class="status-badge s-info">OK</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+
+    <!-- ==================== WATER CHECK (HERO) ==================== -->
+    <div class="page-view" id="page-detect">
+      <div class="card">
+        <div class="detect-hero">
+          <h2 style="background:linear-gradient(135deg,var(--neon-cyan),var(--neon-blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Check Water Level at Your Location</h2>
+          <p>Press the button below — we will use your phone's location to check the water level near you</p>
+        </div>
+
+        <input type="hidden" id="detectLat" value=""/>
+        <input type="hidden" id="detectLon" value=""/>
+
+        <div style="text-align:center;margin:1.5rem 0">
+          <button class="btn btn-primary btn-lg" onclick="useMyLocation()" style="padding:1rem 2.5rem;font-size:1.1rem;border-radius:16px;gap:10px"><i data-lucide="crosshair" style="width:22px;height:22px"></i> Check My Water Level</button>
+          <div id="locationStatus" style="margin-top:.75rem;font-size:.85rem;color:var(--text-dim)"></div>
+        </div>
+
+        <!-- RESULT -->
+        <div class="detect-result" id="detectResult">
+          <!-- Big result card -->
+          <div class="result-hero" id="resultHero" style="background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.2)">
+            <div class="result-depth" id="resDepth" style="color:var(--neon-amber)">-58.3m</div>
+            <div class="result-status" id="resStatus" style="color:var(--neon-amber)">WARNING</div>
+            <div class="result-msg" id="resMsg">Water level is going down in your area. Save water and use carefully. Government tanker schedule has been updated.</div>
+            <div class="result-stats">
+              <div class="result-stat"><div class="result-stat-val" id="resConf" style="color:var(--neon-green)">94%</div><div class="result-stat-label">Prediction Accuracy</div></div>
+              <div class="result-stat"><div class="result-stat-val" id="resRainfall" style="color:var(--neon-blue)">12mm</div><div class="result-stat-label">Recent Rainfall</div></div>
+              <div class="result-stat"><div class="result-stat-val" id="resSoil" style="color:var(--neon-purple)">Clay</div><div class="result-stat-label">Soil Type</div></div>
+            </div>
+          </div>
+
+          <!-- 3-MONTH FUTURE PREDICTION -->
+          <div class="card" style="margin-bottom:1.25rem">
+            <div class="card-header">
+              <div class="card-title"><i data-lucide="calendar-clock" style="width:18px;height:18px;color:var(--neon-purple)"></i> What Will Happen in Next 3 Months?</div>
+            </div>
+            <p style="font-size:.88rem;color:var(--text-dim);margin-bottom:1rem;line-height:1.6">Our AI system predicts how water level will change in your area over the next 3 months:</p>
+            <div class="prediction-timeline" id="predTimeline">
+              <div class="pred-month" style="border-color:rgba(251,191,36,.3)">
+                <div class="pred-month-name">April 2026</div>
+                <div class="pred-month-depth" id="predApr" style="color:var(--neon-amber)">-62.1m</div>
+                <div class="pred-month-risk s-warn" id="predAprRisk" style="font-size:.68rem">WARNING</div>
+              </div>
+              <div class="pred-arrow"><i data-lucide="arrow-right" style="width:20px;height:20px"></i></div>
+              <div class="pred-month" style="border-color:rgba(251,113,133,.3)">
+                <div class="pred-month-name">May 2026</div>
+                <div class="pred-month-depth" id="predMay" style="color:var(--neon-rose)">-68.5m</div>
+                <div class="pred-month-risk s-danger" id="predMayRisk" style="font-size:.68rem">DANGER</div>
+              </div>
+              <div class="pred-arrow"><i data-lucide="arrow-right" style="width:20px;height:20px"></i></div>
+              <div class="pred-month" style="border-color:rgba(251,113,133,.3)">
+                <div class="pred-month-name">June 2026</div>
+                <div class="pred-month-depth" id="predJun" style="color:var(--neon-rose)">-71.2m</div>
+                <div class="pred-month-risk s-danger" id="predJunRisk" style="font-size:.68rem">DANGER</div>
+              </div>
+            </div>
+            <div style="margin-top:1.25rem;padding:1rem;background:rgba(251,113,133,.04);border:1px solid rgba(251,113,133,.15);border-radius:14px" id="predAdvice">
+              <div style="font-weight:700;color:var(--neon-rose);margin-bottom:.3rem;font-size:.9rem"><i data-lucide="alert-triangle" style="width:16px;height:16px;vertical-align:middle"></i> What You Should Do:</div>
+              <ul style="font-size:.85rem;color:var(--text-dim);line-height:1.8;padding-left:1.2rem">
+                <li>Store extra water — fill all tanks and barrels now</li>
+                <li>Use less water for washing and cleaning</li>
+                <li>Use drip irrigation if you have a farm</li>
+                <li>Check tanker schedule at your taluka office</li>
+                <li>Report if your well or hand pump dries up</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Chart + SHAP -->
+          <div class="grid-2">
+            <div class="card"><div class="card-header"><div class="card-title"><span class="card-dot" style="background:var(--neon-cyan)"></span> Water Level History &amp; Prediction</div></div><div class="chart-wrap" style="height:240px"><canvas id="detectChart"></canvas></div></div>
+            <div class="card"><div class="card-header"><div class="card-title"><span class="card-dot" style="background:var(--neon-purple)"></span> What Affects Water Level?</div></div><div class="chart-wrap" style="height:240px"><canvas id="shapChart"></canvas></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ==================== WATER MAP ==================== -->
+    <div class="page-view" id="page-map">
+      <div class="card" style="padding:1rem 1rem 1.25rem">
+        <div class="card-header">
+          <div class="card-title"><i data-lucide="map-pin" style="width:18px;height:18px;color:var(--neon-cyan)"></i> Live Water Level Map — Vidarbha Region</div>
+        </div>
+        <p style="font-size:.85rem;color:var(--text-dim);margin-bottom:1rem">Click on any circle to see water level details. Bigger circles = deeper water (more problem).</p>
+        <div id="waterMap"></div>
+        <div class="map-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--neon-green);width:12px;height:12px"></div> Safe (less than 30m)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--neon-cyan);width:14px;height:14px"></div> OK (30-45m)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--neon-amber);width:16px;height:16px"></div> Warning (45-60m)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--neon-rose);width:18px;height:18px"></div> Danger (more than 60m)</div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ==================== REPORT PROBLEM ==================== -->
+    <div class="page-view" id="page-complaint">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-title"><i data-lucide="message-square-plus" style="width:18px;height:18px;color:var(--neon-cyan)"></i> Report a Water Problem</div></div>
+          <p style="font-size:.85rem;color:var(--text-dim);margin-bottom:1.25rem;line-height:1.6">Tell us about your water problem. We will send this to the district officer. You will get a tracking number.</p>
+          <div class="form-group"><label class="form-label">What is the problem?</label>
+            <select class="form-select"><option>Select problem...</option><option>Well / Borewell Dried Up</option><option>No Water Tanker Coming</option><option>Hand Pump Not Working</option><option>Water is Dirty / Bad Quality</option><option>Pipe Broken</option><option>Other Problem</option></select>
+          </div>
+          <div class="form-grid">
+            <div class="form-group"><label class="form-label">District</label><select class="form-select"><option>Amravati</option><option>Yavatmal</option><option>Akola</option><option>Wardha</option><option>Buldhana</option><option>Washim</option><option>Nagpur</option><option>Chandrapur</option><option>Gadchiroli</option><option>Gondia</option><option>Bhandara</option></select></div>
+            <div class="form-group"><label class="form-label">Taluka / Village</label><input class="form-input" placeholder="e.g. Warud, Morshi"/></div>
+          </div>
+          <div class="form-group"><label class="form-label">How serious?</label>
+            <select class="form-select"><option>Small problem — inconvenience</option><option>Medium — affecting daily life</option><option>Serious — no water to drink</option><option>Emergency — many families affected</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">Tell us more</label><textarea class="form-textarea" placeholder="How many families are affected? Since how many days? Any other details..."></textarea></div>
+          <div style="display:flex;gap:.75rem"><button class="btn btn-primary btn-lg" onclick="submitComplaint()"><i data-lucide="send" style="width:16px;height:16px"></i> Submit Complaint</button><button class="btn btn-ghost">Clear</button></div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:1.25rem">
+            <div class="card-header"><div class="card-title"><i data-lucide="info" style="width:18px;height:18px;color:var(--neon-green)"></i> How It Works</div></div>
+            <div class="tracker">
+              <div class="track-step done"><div class="track-dot"><i data-lucide="check" style="width:16px;height:16px"></i></div><div><div class="track-title">1. You Submit</div><div class="track-desc">Fill this form and press Submit</div></div><div class="track-line"></div></div>
+              <div class="track-step done"><div class="track-dot"><i data-lucide="check" style="width:16px;height:16px"></i></div><div><div class="track-title">2. You Get Tracking Number</div><div class="track-desc">Use this number to check status anytime</div></div><div class="track-line"></div></div>
+              <div class="track-step current"><div class="track-dot"><i data-lucide="arrow-right" style="width:16px;height:16px"></i></div><div><div class="track-title">3. Officer Reviews</div><div class="track-desc">District officer checks within 24 hours</div></div><div class="track-line"></div></div>
+              <div class="track-step pending"><div class="track-dot"><i data-lucide="circle" style="width:14px;height:14px"></i></div><div><div class="track-title">4. Action Taken</div><div class="track-desc">Team is sent to help / tanker dispatched</div></div><div class="track-line"></div></div>
+              <div class="track-step pending"><div class="track-dot"><i data-lucide="circle" style="width:14px;height:14px"></i></div><div><div class="track-title">5. Problem Fixed</div><div class="track-desc">You will be notified when resolved</div></div></div>
+            </div>
+          </div>
+          <div class="card" style="text-align:center;padding:1.5rem">
+            <div style="font-size:3rem;margin-bottom:.5rem">&#128222;</div>
+            <div style="font-weight:700;font-size:1rem;margin-bottom:.3rem">Helpline Number</div>
+            <div class="mono" style="font-size:1.6rem;color:var(--neon-cyan);font-weight:700">1800-XXX-XXXX</div>
+            <div style="font-size:.8rem;color:var(--text-dim);margin-top:.3rem">Free call &middot; Available 24/7</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ==================== TRACK COMPLAINT ==================== -->
+    <div class="page-view" id="page-track">
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-header"><div class="card-title"><i data-lucide="search" style="width:18px;height:18px;color:var(--neon-cyan)"></i> Find Your Complaint</div></div>
+        <p style="font-size:.85rem;color:var(--text-dim);margin-bottom:1rem">Enter your complaint number (example: R-1042) to check status</p>
+        <div style="display:flex;gap:.75rem"><input class="form-input" placeholder="Enter Complaint Number... (e.g. R-1042)" style="flex:1;font-size:1rem"/><button class="btn btn-primary btn-lg"><i data-lucide="search" style="width:18px;height:18px"></i> Search</button></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title"><i data-lucide="clipboard-list" style="width:18px;height:18px;color:var(--neon-purple)"></i> Your Complaints</div></div>
+        <table class="data-table">
+          <thead><tr><th>Number</th><th>Problem</th><th>Location</th><th>Date</th><th>Status</th><th>What's Happening</th></tr></thead>
+          <tbody>
+            <tr><td class="mono" style="color:var(--neon-cyan);font-weight:600">#R-1042</td><td>Well dried up</td><td>Warud, Amravati</td><td class="mono">Mar 8</td><td><span class="status-badge s-progress">IN REVIEW</span></td><td>Officer Kulkarni is checking</td></tr>
+            <tr><td class="mono" style="color:var(--neon-cyan);font-weight:600">#R-1038</td><td>No tanker 5 days</td><td>Daryapur, Amravati</td><td class="mono">Mar 2</td><td><span class="status-badge s-resolved">FIXED</span></td><td>Tanker sent on Mar 5</td></tr>
+            <tr><td class="mono" style="color:var(--neon-cyan);font-weight:600">#R-1031</td><td>Hand pump broken</td><td>Anjangaon</td><td class="mono">Feb 28</td><td><span class="status-badge s-info">WAITING</span></td><td>Repair team will come</td></tr>
+            <tr><td class="mono" style="color:var(--neon-cyan);font-weight:600">#R-1020</td><td>Water quality bad</td><td>Warud</td><td class="mono">Feb 20</td><td><span class="status-badge s-resolved">FIXED</span></td><td>Lab tested — water is safe now</td></tr>
+            <tr><td class="mono" style="color:var(--neon-cyan);font-weight:600">#R-1011</td><td>Pipe broken</td><td>Morshi</td><td class="mono">Feb 10</td><td><span class="status-badge s-danger">URGENT</span></td><td>Sent to District Collector</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+
+    <!-- ==================== ALERTS & NOTIFICATIONS ==================== -->
+    <div class="page-view" id="page-alerts">
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-header"><div class="card-title"><i data-lucide="bell-ring" style="width:18px;height:18px;color:var(--neon-rose)"></i> Water Alerts for Your Area</div></div>
+
+        <div class="alert-box alert-critical">
+          <div class="alert-icon" style="background:rgba(251,113,133,.1)"><i data-lucide="alert-circle" style="width:24px;height:24px;color:var(--neon-rose)"></i></div>
+          <div>
+            <div class="alert-title" style="color:var(--neon-rose)">DANGER — Amravati Water Level Dropping Fast!</div>
+            Our AI is predicting water will reach -71m by May 15. Your village Warud is in HIGH risk zone. Fill all your water tanks NOW. Use drip irrigation for farms.
+            <div class="alert-time mono">Mar 11, 2026 &middot; AI Prediction &middot; 94% sure</div>
+          </div>
+        </div>
+
+        <div class="alert-box alert-warn">
+          <div class="alert-icon" style="background:rgba(251,191,36,.1)"><i data-lucide="cloud-rain" style="width:24px;height:24px;color:var(--neon-amber)"></i></div>
+          <div>
+            <div class="alert-title" style="color:var(--neon-amber)">Less Rain Expected This Year</div>
+            Rainfall is 18% less than normal. Underground water will not fill up properly after monsoon. Start using water carefully from now.
+            <div class="alert-time mono">Mar 9, 2026 &middot; Weather prediction</div>
+          </div>
+        </div>
+
+        <div class="alert-box alert-info">
+          <div class="alert-icon" style="background:rgba(34,211,238,.1)"><i data-lucide="truck" style="width:24px;height:24px;color:var(--neon-cyan)"></i></div>
+          <div>
+            <div class="alert-title" style="color:var(--neon-cyan)">Tanker Schedule Updated for March</div>
+            Warud village: Tanker every Monday &amp; Thursday. Check your taluka office for exact timing.
+            <div class="alert-time mono">Mar 7, 2026 &middot; District Admin</div>
+          </div>
+        </div>
+
+        <div class="alert-box alert-success">
+          <div class="alert-icon" style="background:rgba(52,211,153,.1)"><i data-lucide="check-circle" style="width:24px;height:24px;color:var(--neon-green)"></i></div>
+          <div>
+            <div class="alert-title" style="color:var(--neon-green)">Your Complaint #R-1038 Resolved</div>
+            Water tanker was dispatched to your village Warud on March 5th.
+            <div class="alert-time mono">Mar 5, 2026 &middot; Resolved by Officer Kulkarni</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simple future outlook -->
+      <div class="card">
+        <div class="card-header"><div class="card-title"><i data-lucide="trending-down" style="width:18px;height:18px;color:var(--neon-amber)"></i> Water Level Over Time</div></div>
+        <div class="chart-wrap" style="height:240px"><canvas id="alertTrendChart"></canvas></div>
+        <div style="margin-top:1rem;padding:.85rem;background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.15);border-radius:12px;font-size:.85rem;color:var(--text-dim);line-height:1.6">
+          <strong style="color:var(--neon-amber)">What this means:</strong> The blue line shows water level going down. The red dotted line shows where we think it will go. When monsoon rain comes (June-August), water level will slowly come back up.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+/* ===== INIT ===== */
+lucide.createIcons();
+const $=s=>document.querySelector(s);const $$=s=>document.querySelectorAll(s);
+const mono={family:"'JetBrains Mono',monospace"};const grid='rgba(255,255,255,.04)';
+const co={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:grid},ticks:{color:'#64748b',font:mono}},y:{grid:{color:grid},ticks:{color:'#64748b',font:mono}}}};
+
+/* ===== SIDEBAR ===== */
+$('#toggleSidebar').addEventListener('click',()=>{$('#sidebar').classList.toggle('collapsed');$('#main').classList.toggle('expanded')});
+const pageMap={home:['home','Home'],detect:['radar','Check Water Level'],map:['map-pin','Water Map'],complaint:['message-square-plus','Report Problem'],track:['search','Track Complaint'],alerts:['bell-ring','Alerts']};
+function goPage(pg){
+  $$('.page-view').forEach(v=>v.classList.remove('active'));$('#page-'+pg).classList.add('active');
+  $$('.nav-item').forEach(b=>b.classList.remove('active'));const btn=document.querySelector('.nav-item[data-page="'+pg+'"]');if(btn)btn.classList.add('active');
+  const info=pageMap[pg]||['home',pg];$('#pageTitle').innerHTML='<i data-lucide="'+info[0]+'" style="width:18px;height:18px"></i> '+info[1];lucide.createIcons();
+  $('#sidebar').classList.remove('open');
+  if(pg==='map')setTimeout(initMap,150);
+}
+$$('.nav-item[data-page]').forEach(b=>{b.addEventListener('click',()=>goPage(b.dataset.page))});
+
+/* ===== ALERT TREND CHART ===== */
+new Chart($('#alertTrendChart'),{type:'line',data:{labels:['Oct 2025','Nov','Dec','Jan 2026','Feb','Mar','Apr','May','Jun','Jul','Aug'],datasets:[{label:'Water Level (actual)',data:[-48,-52,-55,-58,-61,-63.4,null,null,null,null,null],borderColor:'#22d3ee',backgroundColor:'rgba(34,211,238,.06)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'#22d3ee',borderWidth:2.5},{label:'Prediction',data:[null,null,null,null,null,-63.4,-66,-69,-71,-65,-55],borderColor:'#fb7185',borderDash:[6,4],tension:.4,pointRadius:4,pointBackgroundColor:'#fb7185',borderWidth:2},{label:'Monsoon recovery',data:[null,null,null,null,null,null,null,null,null,-65,-55],borderColor:'#34d399',borderDash:[6,4],tension:.4,pointRadius:4,pointBackgroundColor:'#34d399',borderWidth:2}]},options:{...co,plugins:{legend:{display:true,labels:{color:'#64748b',font:mono,padding:16}}}}});
+
+/* ===== LEAFLET MAP ===== */
+let mapReady=false;
+function initMap(){
+  if(mapReady)return;mapReady=true;
+  const map=L.map('waterMap',{zoomControl:false}).setView([20.5,78.2],7.5);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'CartoDB'}).addTo(map);
+  L.control.zoom({position:'topright'}).addTo(map);
+
+  const wells=[
+    {n:'Yavatmal Central',lt:20.39,ln:78.13,d:72.1,p:'Apr: -76m\nMay: -78m',fam:4200,t:'Emergency tanker daily'},
+    {n:'Amravati — Warud',lt:20.93,ln:77.78,d:63.4,p:'Apr: -66m\nMay: -71m',fam:3800,t:'Tanker Mon/Thu'},
+    {n:'Yavatmal — Morshi',lt:20.25,ln:78.50,d:68.4,p:'Apr: -72m\nMay: -75m',fam:2900,t:'Daily tanker'},
+    {n:'Amravati HQ',lt:21.05,ln:77.60,d:61.2,p:'Apr: -64m\nMay: -68m',fam:5200,t:'Tanker Tue/Fri'},
+    {n:'Amravati — Daryapur',lt:20.80,ln:77.95,d:66.8,p:'Apr: -70m\nMay: -73m',fam:1800,t:'Emergency tanker'},
+    {n:'Yavatmal South',lt:20.50,ln:78.30,d:70.5,p:'Apr: -74m\nMay: -77m',fam:2100,t:'Daily tanker'},
+    {n:'Akola City',lt:20.72,ln:77.07,d:58.7,p:'Apr: -61m\nMay: -64m',fam:4100,t:'Tanker weekly'},
+    {n:'Akola — Akot',lt:20.65,ln:77.20,d:54.3,p:'Apr: -57m\nMay: -60m',fam:1500,t:'On-demand'},
+    {n:'Akola South',lt:20.80,ln:76.95,d:57.6,p:'Apr: -60m\nMay: -63m',fam:2200,t:'Tanker Tue/Sat'},
+    {n:'Buldhana City',lt:20.53,ln:76.18,d:55.8,p:'Apr: -58m\nMay: -62m',fam:3500,t:'Tanker Wed/Sat'},
+    {n:'Buldhana South',lt:20.45,ln:76.30,d:51.2,p:'Apr: -54m\nMay: -57m',fam:1700,t:'On-demand'},
+    {n:'Washim',lt:20.11,ln:77.15,d:52.1,p:'Apr: -55m\nMay: -58m',fam:2800,t:'Tanker weekly'},
+    {n:'Washim North',lt:20.20,ln:77.00,d:49.8,p:'Apr: -52m\nMay: -55m',fam:2000,t:'On-demand'},
+    {n:'Nagpur City',lt:21.15,ln:79.09,d:36.5,p:'Apr: -38m\nMay: -40m',fam:12000,t:'Piped supply'},
+    {n:'Nagpur South',lt:21.25,ln:79.20,d:38.9,p:'Apr: -40m\nMay: -42m',fam:8000,t:'Piped supply'},
+    {n:'Nagpur West',lt:21.00,ln:79.00,d:34.2,p:'Apr: -36m\nMay: -38m',fam:5500,t:'Piped supply'},
+    {n:'Wardha City',lt:20.73,ln:78.60,d:41.2,p:'Apr: -43m\nMay: -45m',fam:3200,t:'Tanker Mon'},
+    {n:'Wardha South',lt:20.60,ln:78.45,d:43.5,p:'Apr: -45m\nMay: -47m',fam:1900,t:'On-demand'},
+    {n:'Chandrapur City',lt:19.97,ln:79.30,d:44.3,p:'Apr: -46m\nMay: -48m',fam:4800,t:'Tanker Wed'},
+    {n:'Chandrapur East',lt:20.05,ln:79.45,d:46.1,p:'Apr: -48m\nMay: -50m',fam:2600,t:'On-demand'},
+    {n:'Gondia',lt:21.46,ln:80.20,d:28.1,p:'Apr: -29m\nMay: -30m',fam:3200,t:'Piped supply'},
+    {n:'Gondia North',lt:21.60,ln:80.35,d:26.3,p:'Apr: -27m\nMay: -28m',fam:2100,t:'Piped supply'},
+    {n:'Bhandara',lt:21.17,ln:79.65,d:25.4,p:'Apr: -26m\nMay: -27m',fam:2400,t:'Piped supply'},
+    {n:'Gadchiroli',lt:20.18,ln:80.00,d:22.8,p:'Apr: -23m\nMay: -24m',fam:1800,t:'Piped supply'}
+  ];
+
+  wells.forEach(w=>{
+    let col,risk,r;
+    if(w.d>60){col='#fb7185';risk='DANGER';r=10+((w.d-60)/3)}
+    else if(w.d>45){col='#fbbf24';risk='WARNING';r=8+((w.d-45)/5)}
+    else if(w.d>30){col='#22d3ee';risk='OK';r=7}
+    else{col='#34d399';risk='SAFE';r=6}
+
+    const marker=L.circleMarker([w.lt,w.ln],{radius:r,fillColor:col,fillOpacity:.85,color:col,weight:2.5,opacity:.6}).addTo(map);
+    const pred=w.p.replace(/\n/g,'<br/>');
+    marker.bindPopup('<div style="font-family:Outfit,sans-serif;font-size:.85rem;min-width:200px;line-height:1.6;color:#1e293b">'+
+      '<div style="font-weight:800;font-size:1rem;margin-bottom:.4rem;color:#0f172a">'+w.n+'</div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">'+
+        '<span style="font-family:JetBrains Mono,monospace;font-size:1.3rem;font-weight:700;color:'+col+'">-'+w.d+'m</span>'+
+        '<span style="font-size:.85rem;font-weight:700;color:'+col+'">'+risk+'</span>'+
+      '</div>'+
+      '<div style="border-top:1px solid rgba(0,0,0,.08);padding-top:.5rem;margin-top:.3rem">'+
+        '<div style="font-size:.72rem;color:#64748b;font-weight:600;margin-bottom:.2rem">NEXT 3 MONTH PREDICTION:</div>'+
+        '<div style="font-family:JetBrains Mono,monospace;font-size:.82rem;color:#334155">'+pred+'</div>'+
+      '</div>'+
+      '<div style="border-top:1px solid rgba(0,0,0,.08);padding-top:.5rem;margin-top:.5rem;font-size:.78rem;color:#475569">'+
+        '<div><strong>'+w.fam.toLocaleString()+'</strong> families affected</div>'+
+        '<div>'+w.t+'</div>'+
+      '</div>'+
+    '</div>',{maxWidth:280});
+
+    // Pulse animation for danger wells
+    if(w.d>60){
+      L.circleMarker([w.lt,w.ln],{radius:r+6,fillColor:col,fillOpacity:0,color:col,weight:1.5,opacity:.3}).addTo(map);
+    }
+  });
+}
+
+/* ===== LIVE DETECTION ===== */
+function runDetection(){
+  const lat=parseFloat($('#detectLat').value);const lon=parseFloat($('#detectLon').value);
+  if(isNaN(lat)||isNaN(lon)){$('#locationStatus').innerHTML='<span style="color:var(--neon-rose)">Press the button above to detect your location first.</span>';return;}
+
+  // Simulate model prediction based on location
+  const baseLat=20.93,baseLon=77.78;
+  const dist=Math.sqrt(Math.pow(lat-baseLat,2)+Math.pow(lon-baseLon,2));
+  const baseDepth=-(45+dist*40+Math.random()*8);
+  const depth=Math.max(-85,Math.min(-20,baseDepth));
+  const absD=Math.abs(depth);
+  const conf=(88+Math.random()*8).toFixed(0);
+
+  // Determine risk
+  let risk,riskColor,riskMsg,borderCol,bgCol;
+  if(absD>65){risk='DANGER';riskColor='var(--neon-rose)';riskMsg='Water level is very low and dangerous! Fill all your water tanks immediately. Contact taluka office for emergency tanker.';borderCol='rgba(251,113,133,.3)';bgCol='rgba(251,113,133,.04)'}
+  else if(absD>50){risk='WARNING';riskColor='var(--neon-amber)';riskMsg='Water level is going down in your area. Save water and use carefully. Check tanker schedule at your taluka office.';borderCol='rgba(251,191,36,.3)';bgCol='rgba(251,191,36,.04)'}
+  else if(absD>35){risk='MODERATE';riskColor='var(--neon-cyan)';riskMsg='Water level is okay but keep monitoring. Use water wisely especially for farming.';borderCol='rgba(34,211,238,.3)';bgCol='rgba(34,211,238,.04)'}
+  else{risk='SAFE';riskColor='var(--neon-green)';riskMsg='Water level is good in your area. Continue normal use. Keep rainwater harvesting for future.';borderCol='rgba(52,211,153,.3)';bgCol='rgba(52,211,153,.04)'}
+
+  // Show result
+  $('#detectResult').style.display='block';
+  $('#resDepth').textContent=depth.toFixed(1)+'m';$('#resDepth').style.color=riskColor;
+  $('#resStatus').textContent=risk;$('#resStatus').style.color=riskColor;
+  $('#resMsg').textContent=riskMsg;
+  $('#resConf').textContent=conf+'%';
+  $('#resRainfall').textContent=(5+Math.random()*20).toFixed(0)+'mm';
+  var soils=['Black Cotton','Alluvial','Red','Clay','Laterite'];
+  $('#resSoil').textContent=soils[Math.floor(Math.random()*soils.length)];
+  $('#resultHero').style.background=bgCol;$('#resultHero').style.borderColor=borderCol;
+
+  // 3-month predictions
+  var apr=depth-(2+Math.random()*3);var may=apr-(3+Math.random()*4);var jun=may-(1+Math.random()*3);
+  function riskTag(d){var a=Math.abs(d);return a>65?{t:'DANGER',c:'s-danger',col:'var(--neon-rose)',bc:'rgba(251,113,133,.3)'}:a>50?{t:'WARNING',c:'s-warn',col:'var(--neon-amber)',bc:'rgba(251,191,36,.3)'}:a>35?{t:'OK',c:'s-info',col:'var(--neon-cyan)',bc:'rgba(34,211,238,.3)'}:{t:'SAFE',c:'s-safe',col:'var(--neon-green)',bc:'rgba(52,211,153,.3)'}}
+  var rApr=riskTag(apr),rMay=riskTag(may),rJun=riskTag(jun);
+  $('#predApr').textContent=apr.toFixed(1)+'m';$('#predApr').style.color=rApr.col;$('#predAprRisk').textContent=rApr.t;$('#predAprRisk').className='pred-month-risk '+rApr.c;
+  $('#predMay').textContent=may.toFixed(1)+'m';$('#predMay').style.color=rMay.col;$('#predMayRisk').textContent=rMay.t;$('#predMayRisk').className='pred-month-risk '+rMay.c;
+  $('#predJun').textContent=jun.toFixed(1)+'m';$('#predJun').style.color=rJun.col;$('#predJunRisk').textContent=rJun.t;$('#predJunRisk').className='pred-month-risk '+rJun.c;
+  // Update timeline borders
+  var mths=$('#predTimeline').children;
+  [rApr,rMay,rJun].forEach(function(r,i){var el=mths[i*2];if(el)el.style.borderColor=r.bc;});
+
+  // Advice box styling
+  var advBox=$('#predAdvice');
+  advBox.style.background=bgCol;advBox.style.borderColor=borderCol;
+  advBox.querySelector('div').style.color=riskColor;
+
+  // History + prediction chart
+  var dc=$('#detectChart');if(dc._c)dc._c.destroy();
+  dc._c=new Chart(dc,{type:'line',data:{labels:['6mo ago','5mo','4mo','3mo','2mo','1mo','NOW','Apr','May','Jun'],datasets:[{label:'Actual',data:[depth+18,depth+15,depth+12,depth+9,depth+5,depth+2,depth,null,null,null],borderColor:'#22d3ee',backgroundColor:'rgba(34,211,238,.06)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'#22d3ee',borderWidth:2.5},{label:'Predicted',data:[null,null,null,null,null,null,depth,apr,may,jun],borderColor:'#fb7185',borderDash:[6,4],tension:.4,pointRadius:5,pointBackgroundColor:'#fb7185',borderWidth:2.5}]},options:{...co,plugins:{legend:{display:true,labels:{color:'#64748b',font:mono,padding:16}}}}});
+
+  // SHAP chart - simplified labels
+  var sc=$('#shapChart');if(sc._c)sc._c.destroy();
+  sc._c=new Chart(sc,{type:'bar',data:{labels:['Last Month Rain','Previous Water Level','Height Above Sea','Location','Temperature','Greenery (NDVI)','Soil Type'],datasets:[{data:[0.32,0.28,0.15,0.12,0.08,0.04,0.02],backgroundColor:['#3b82f6','#22d3ee','#a855f7','#fbbf24','#fb7185','#34d399','#64748b'],borderRadius:6}]},options:{...co,indexAxis:'y',plugins:{legend:{display:false}},scales:{...co.scales,x:{...co.scales.x,title:{display:true,text:'How much it matters',color:'#64748b',font:mono}}}}});
+
+  // Scroll to result
+  $('#detectResult').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function useMyLocation(){
+  var statusEl=$('#locationStatus');
+  if(!navigator.geolocation){statusEl.innerHTML='<span style="color:var(--neon-rose)">Location not available on this device.</span>';return;}
+  statusEl.innerHTML='<span style="color:var(--neon-cyan)"><i data-lucide="loader" style="width:14px;height:14px;display:inline;vertical-align:middle;animation:spin 1s linear infinite"></i> Finding your location...</span>';lucide.createIcons();
+  navigator.geolocation.getCurrentPosition(function(p){
+    $('#detectLat').value=p.coords.latitude.toFixed(4);
+    $('#detectLon').value=p.coords.longitude.toFixed(4);
+    statusEl.innerHTML='<span style="color:var(--neon-green)">&#10003; Location found! Checking water level...</span>';
+    runDetection();
+  },function(){
+    statusEl.innerHTML='<span style="color:var(--neon-rose)">Could not get location. Please allow location access in your browser and try again.</span>';
+  },{enableHighAccuracy:true,timeout:10000});
+}
+
+/* ===== SUBMIT COMPLAINT ===== */
+function submitComplaint(){
+  var id='R-'+(1000+Math.floor(Math.random()*900));
+  alert('Complaint Submitted!\n\nYour Tracking Number: #'+id+'\n\nSave this number! Use it to check status anytime.\nOfficer will review within 24 hours.');
+}
+</script>
+</body>
+</html>
