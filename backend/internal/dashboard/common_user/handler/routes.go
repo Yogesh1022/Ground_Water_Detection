@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http"
 
-	"aquavidarbha/backend/internal/middleware"
+	"github.com/Yogesh1022/Ground_Water_Detection/backend/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 

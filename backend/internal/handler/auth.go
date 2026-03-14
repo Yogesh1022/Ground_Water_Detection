@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"aquavidarbha/backend/internal/service"
+	"github.com/Yogesh1022/Ground_Water_Detection/backend/internal/service"
 	"github.com/gin-gonic/gin"
 )
 

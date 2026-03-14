@@ -1,4 +1,4 @@
-git# Python
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -56,9 +56,22 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Go / Windows build artifacts
-tmp/
+# Go build artifacts
+backend/tmp/
+backend/bin/
 *.exe
 *.out
 *.test
 coverage.out
+
+# Air (live reload)
+backend/build-errors.log
+
+# Docker
+backend/.env
+backend/.env.local
+
+# Go test / coverage
+*.test
+coverage.out
+go.sum.backup

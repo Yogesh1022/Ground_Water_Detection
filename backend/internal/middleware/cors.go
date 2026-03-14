@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"aquavidarbha/backend/internal/config"
+	"github.com/Yogesh1022/Ground_Water_Detection/backend/internal/config"
 	"github.com/gin-gonic/gin"
 )
 

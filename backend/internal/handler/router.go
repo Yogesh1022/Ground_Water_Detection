@@ -3,10 +3,10 @@ package handler
 import (
 	"net/http"
 
-	"aquavidarbha/backend/internal/dashboard/admin/handler"
-	commonUserHandler "aquavidarbha/backend/internal/dashboard/common_user/handler"
-	govnUserHandler "aquavidarbha/backend/internal/dashboard/govn_user/handler"
-	"aquavidarbha/backend/internal/middleware"
+	"github.com/Yogesh1022/Ground_Water_Detection/backend/internal/dashboard/admin/handler"
+	commonUserHandler "github.com/Yogesh1022/Ground_Water_Detection/backend/internal/dashboard/common_user/handler"
+	govnUserHandler "github.com/Yogesh1022/Ground_Water_Detection/backend/internal/dashboard/govn_user/handler"
+	"github.com/Yogesh1022/Ground_Water_Detection/backend/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 

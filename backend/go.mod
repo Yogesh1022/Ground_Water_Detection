@@ -1,4 +1,4 @@
-module aquavidarbha/backend
+module github.com/Yogesh1022/Ground_Water_Detection/backend
 
 go 1.23
 
