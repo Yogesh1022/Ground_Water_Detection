@@ -5,6 +5,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -50,6 +52,9 @@ type CORSConfig struct {
 }
 
 func Load() (Config, error) {
+	// Best-effort load for local development; OS env vars still take precedence.
+	_ = godotenv.Load(".env", ".env.local", ".env.example")
+
 	cfg := Config{
 		AppEnv: getEnv("APP_ENV", "development"),
 		Server: ServerConfig{
