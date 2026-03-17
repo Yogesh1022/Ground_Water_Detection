@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -34,30 +35,58 @@ func main() {
 		_ = logger.Sync()
 	}()
 
+	gin.SetMode(gin.ReleaseMode)
+	gin.DefaultWriter = io.Discard
+	gin.DefaultErrorWriter = io.Discard
+	gin.DebugPrintRouteFunc = func(string, string, string, int) {}
+
+	logger.Info("[BOOT] config loaded",
+		zap.String("app_env", cfg.AppEnv),
+		zap.String("server_port", cfg.Server.Port),
+		zap.String("postgres_host", cfg.Database.Host),
+		zap.Int("postgres_port", cfg.Database.Port),
+		zap.String("postgres_db", cfg.Database.Name),
+		zap.String("redis_host", cfg.Redis.Host),
+		zap.Int("redis_port", cfg.Redis.Port),
+	)
+
 	ctx := context.Background()
 
 	dbPool, err := newPostgresPool(ctx, cfg)
 	if err != nil {
-		logger.Fatal("failed to connect postgres", zap.Error(err))
+		logger.Fatal("[DB] postgres connection failed", zap.Error(err))
 	}
 	defer dbPool.Close()
+	logger.Info("[DB] postgres connected",
+		zap.String("host", cfg.Database.Host),
+		zap.Int("port", cfg.Database.Port),
+		zap.String("database", cfg.Database.Name),
+		zap.Int32("max_conns", cfg.Database.MaxConns),
+	)
 
 	redisClient, err := newRedisClient(ctx, cfg)
 	if err != nil {
-		logger.Fatal("failed to connect redis", zap.Error(err))
+		logger.Fatal("[CACHE] redis connection failed", zap.Error(err))
 	}
 	defer func() {
 		_ = redisClient.Close()
 	}()
+	logger.Info("[CACHE] redis connected",
+		zap.String("host", cfg.Redis.Host),
+		zap.Int("port", cfg.Redis.Port),
+		zap.Int("db", cfg.Redis.DB),
+	)
 
 	r := gin.New()
 	r.Use(middleware.RequestLogger(logger))
 	r.Use(middleware.Recovery(logger))
 	r.Use(middleware.CORS(cfg.CORS))
+	logger.Info("[HTTP] gin initialized", zap.String("mode", gin.Mode()))
 
 	authService := service.NewAuthService(dbPool, cfg.Auth.JWTSecret, cfg.Auth.JWTTTLHours)
 	authHandler := handler.NewAuthHandler(authService)
-	handler.RegisterRoutes(r, authHandler, cfg.Auth.JWTSecret)
+	handler.RegisterRoutes(r, authHandler, cfg.Auth.JWTSecret, dbPool, redisClient)
+	logger.Info("[HTTP] routes registered")
 
 	server := &http.Server{
 		Addr:              fmt.Sprintf(":%s", cfg.Server.Port),
@@ -66,9 +95,9 @@ func main() {
 	}
 
 	go func() {
-		logger.Info("server_starting", zap.String("addr", server.Addr))
+		logger.Info("[HTTP] server starting", zap.String("addr", server.Addr))
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal("server_start_failed", zap.Error(err))
+			logger.Fatal("[HTTP] server start failed", zap.Error(err))
 		}
 	}()
 
@@ -117,8 +146,8 @@ func waitForShutdown(server *http.Server, logger *zap.Logger) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	logger.Info("server_shutting_down")
+	logger.Info("[HTTP] server shutting down")
 	if err := server.Shutdown(ctx); err != nil {
-		logger.Error("server_shutdown_error", zap.Error(err))
+		logger.Error("[HTTP] server shutdown error", zap.Error(err))
 	}
 }
