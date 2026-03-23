@@ -1,0 +1,16 @@
+$kind: http-request
+method: DELETE
+url: '{{baseUrl}}/api/v1/admin/users/{{testUserId}}'
+order: 4700
+headers:
+  - key: Authorization
+    value: Bearer {{adminToken}}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Admin user delete is 200', function () {
+        pm.response.to.have.status(200);
+      });
+
+      pm.environment.unset('testUserId');

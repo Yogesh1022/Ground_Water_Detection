@@ -1,0 +1,29 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/auth/login'
+order: 3000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{citizenEmail}}",
+      "password": "{{citizenPassword}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Citizen login is 200', function () {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.environment.set('token', json.token);
+      pm.environment.set('citizenToken', json.token);
+
+      pm.test("User role is 'citizen'", function () {
+        pm.expect(json).to.have.nested.property('user.role', 'citizen');
+      });

@@ -1,0 +1,31 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/admin/wells'
+order: 4900
+headers:
+  - key: Authorization
+    value: Bearer {{adminToken}}
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Phase4 Postman Test Well",
+      "district": "Nagpur",
+      "taluka": "Nagpur Urban",
+      "village": "Postman Village",
+      "latitude": 21.1458,
+      "longitude": 79.0882,
+      "well_type": "borewell",
+      "depth_total_m": 120.5,
+      "aquifer_type": "basalt",
+      "affected_families": 42
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Admin well create is 201', function () {
+        pm.response.to.have.status(201);
+      });

@@ -1,0 +1,14 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/admin/activity-log?page=1&limit=20'
+order: 5400
+headers:
+  - key: Authorization
+    value: Bearer {{adminToken}}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Admin activity log is 200', function () {
+        pm.response.to.have.status(200);
+      });

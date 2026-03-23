@@ -1,0 +1,25 @@
+$kind: http-request
+method: PUT
+url: '{{baseUrl}}/api/v1/admin/settings'
+order: 5100
+headers:
+  - key: Authorization
+    value: Bearer {{adminToken}}
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "settings": {
+        "overview_cache_ttl_sec": 300,
+        "admin_users_page_limit_default": 20
+      }
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Admin settings update is 200', function () {
+        pm.response.to.have.status(200);
+      });

@@ -1,0 +1,19 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/common-user/me'
+order: 3100
+headers:
+  - key: Authorization
+    value: Bearer {{citizenToken}}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Citizen me is 200', function () {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.test('Role is citizen', function () {
+        pm.expect(json).to.have.property('role', 'citizen');
+      });
