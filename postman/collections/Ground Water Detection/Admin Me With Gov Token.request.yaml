@@ -1,0 +1,14 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/admin/me'
+order: 2200
+headers:
+  - key: Authorization
+    value: Bearer {{govToken}}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Admin me with gov token is 403', function () {
+        pm.response.to.have.status(403);
+      });

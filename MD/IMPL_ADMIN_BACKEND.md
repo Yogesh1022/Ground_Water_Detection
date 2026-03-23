@@ -10,6 +10,195 @@
 
 The Admin dashboard is the **first priority** to implement. It manages all other users, wells, ML models, system settings, and audit logs. Nothing in Gov or User dashboards can work until the admin can create gov officer accounts.
 
+This guide is updated for a **production-grade Go backend** implementation using:
+
+- JWT authentication
+- RBAC authorization
+- Layered architecture (`handler -> service -> repository`)
+- Audit logging for all write operations
+- ML model and data-source management APIs
+- Redis caching for read-heavy admin analytics
+
+## Project Reality Check (Current Repo)
+
+Before implementation, align with actual repository state:
+
+1. `backend/internal/dashboard/admin/handler/routes.go` is currently a stub (`/me` only).
+2. Shared router currently does not pass DB/Redis dependencies to dashboard modules.
+3. PostgreSQL schema already has required admin tables: `users`, `wells`, `audit_log`, `system_settings`, `ml_model_registry`, `data_sources`, `predictions`, `complaints`, and `district_stats`.
+4. Redis is configured and connected in server bootstrap, but not yet used by admin services.
+
+Treat this as the canonical implementation sequence for admin backend delivery.
+
+## Delivery Target
+
+Build a complete admin backend under `/api/v1/admin` that is secure, observable, testable, and deployable.
+
+Success means:
+
+- Admin can manage users and wells.
+- Admin can view overview analytics, model registry, data sources, and activity logs.
+- All writes are audited.
+- Read-heavy overview/list endpoints are cache-enabled with Redis.
+- `go build ./...` passes and smoke tests pass.
+
+## Implementation Order (Recommended)
+
+Use this exact order to avoid refactor churn and compile breakage:
+
+1. Fix shared dependency wiring in router/main (DB + optional Redis injection).
+2. Create `dto` package.
+3. Create `repository` package.
+4. Create `service` package.
+5. Replace admin `handler/routes.go`.
+6. Add Redis cache strategy to overview and list endpoints.
+7. Build, run, and smoke test all admin endpoints.
+8. Harden with error mapping, pagination defaults, and audit verification.
+
+## Current Codebase Alignment (March 2026)
+
+- `backend/internal/dashboard/admin/handler/routes.go` is still a stub (`/me` only).
+- Shared router currently has signature `RegisterRoutes(r *gin.Engine, authHandler *AuthHandler, jwtSecret string)` and does **not** pass DB into admin routes.
+- `cmd/server/main.go` already creates `dbPool` and should pass it into shared route registration.
+- `backend/migrations/schema.sql` already contains required tables for admin endpoints (`users`, `wells`, `audit_log`, `system_settings`, `ml_model_registry`, `data_sources`, `predictions`, `complaints`, `district_stats`).
+
+## Execution Checklist
+
+- [ ] Phase 0 complete: router/main dependency wiring fixed.
+- [ ] Phase 1 complete: admin DTO contracts finalized.
+- [ ] Phase 2 complete: repository methods implemented and SQL verified.
+- [ ] Phase 3 complete: service business rules + audit writes implemented.
+- [ ] Phase 4 complete: all admin handlers/routes implemented.
+- [ ] Phase 5 complete: Redis cache added for overview/list endpoints.
+- [ ] Phase 6 complete: build, run, smoke test, and verify logs/metrics.
+
+---
+
+## Production Step-by-Step Implementation Plan
+
+### Phase 0 - Bootstrap and Dependency Wiring
+
+Objective: make dashboard modules capable of using database and cache dependencies.
+
+1. Update shared router signature to accept dependencies.
+2. Pass `dbPool` from `cmd/server/main.go` into shared router registration.
+3. If Redis cache is implemented immediately, pass `redisClient` into admin route registration or service constructors.
+4. Keep middleware order unchanged: request logger -> recovery -> CORS -> auth -> role check.
+
+Exit criteria:
+
+- App compiles after router signature change.
+- Admin route registration receives DB pool.
+
+### Phase 1 - DTO Contract Finalization
+
+Objective: define stable request/response contracts for API and internal layers.
+
+1. Keep existing DTO set from this document.
+2. Add explicit pagination defaults handling at service level (`page>=1`, `limit in [1,100]`).
+3. Ensure `OverviewResponse.AvgDepthMbgl` remains `float64` end-to-end.
+4. Keep role constraints strict: `citizen | gov | admin`.
+
+Exit criteria:
+
+- All handler bindings compile and validate as expected.
+- No ambiguous or nullable JSON fields in primary responses.
+
+### Phase 2 - Repository Layer Implementation
+
+Objective: implement all DB access with robust SQL and error handling.
+
+1. Implement user repository methods: list/get/create/update/activate/suspend/delete/count-by-role.
+2. Implement well repository methods: list/create/count (and optional get/update if needed).
+3. Implement audit repository methods: write log + paginated list.
+4. Implement settings repository methods: list + upsert.
+5. Implement model repository methods: list models, list data sources, overview stats.
+6. Use parameterized SQL for all dynamic filters.
+7. Convert `pgx.ErrNoRows` to explicit domain-friendly errors.
+
+Exit criteria:
+
+- Repository layer passes build and manual query checks.
+- Pagination/count SQL returns consistent totals.
+
+### Phase 3 - Service Layer (Business Rules)
+
+Objective: enforce admin domain rules and centralize side effects.
+
+1. Implement user service operations and self-protection rules:
+    - cannot suspend own account
+    - cannot delete own account
+2. Enforce audit write for every mutation endpoint.
+3. Implement overview service with aggregated KPIs.
+4. Implement settings service bulk-update transaction behavior.
+5. Implement model service read operations.
+
+Exit criteria:
+
+- Rules are enforced regardless of handler behavior.
+- Every write path triggers an audit log insertion.
+
+### Phase 4 - Handler and Route Completion
+
+Objective: replace admin stub with all production endpoints.
+
+1. Keep `/me` identity endpoint.
+2. Implement `/overview`.
+3. Implement user lifecycle endpoints (`list/get/create/update/suspend/activate/delete`).
+4. Implement wells endpoints (`list/create`).
+5. Implement settings endpoints (`list/update`).
+6. Implement model and data-source endpoints.
+7. Implement activity log endpoint.
+8. Return stable status codes and simple error payloads.
+
+Exit criteria:
+
+- All admin endpoints from API reference respond correctly.
+- Input validation errors return `400`, auth failures remain `401/403`, not found returns `404`.
+
+### Phase 5 - Redis Caching (Production Hardening)
+
+Objective: reduce DB load and improve latency for read-heavy endpoints.
+
+Recommended cache-aside targets:
+
+1. `GET /admin/overview`
+    - Key: `admin:overview:v1`
+    - TTL: 300s (or from `system_settings`)
+2. `GET /admin/users` paginated listing
+    - Key pattern: `admin:users:{query_hash}`
+    - TTL: 60-120s
+3. `GET /admin/activity-log` (optional)
+    - Key pattern: `admin:audit:{query_hash}`
+    - TTL: 30-60s
+
+Invalidation strategy:
+
+- On any user write (`create/update/suspend/activate/delete`): invalidate `admin:overview:*` and `admin:users:*`.
+- On settings update impacting analytics: invalidate `admin:overview:*`.
+
+Exit criteria:
+
+- Cache hit/miss behavior is visible in logs.
+- No stale critical data after write operations.
+
+### Phase 6 - Verification and Release Gate
+
+Objective: prove end-to-end correctness before merging.
+
+1. Run `go build ./...`.
+2. Start dependencies and run `air` from `backend`.
+3. Perform login and endpoint smoke tests.
+4. Validate audit entries for each write endpoint.
+5. Validate pagination metadata on list endpoints.
+6. Validate self-protection rules with admin token.
+7. Validate cache invalidation by observing changed overview/list after writes.
+
+Exit criteria:
+
+- All checklist items pass.
+- Admin dashboard backend is ready for frontend integration.
+
 ---
 
 ## Files to Create
@@ -649,13 +838,13 @@ func (r *ModelRepo) ListDataSources(ctx context.Context) ([]dto.DataSourceRespon
     return ds, rows.Err()
 }
 
-func (r *ModelRepo) GetOverviewStats(ctx context.Context) (int64, int64, int64, error) {
+func (r *ModelRepo) GetOverviewStats(ctx context.Context) (int64, int64, float64, error) {
     var totalPredictions, openComplaints int64
     r.db.QueryRow(ctx, `SELECT COUNT(*) FROM predictions`).Scan(&totalPredictions)
     r.db.QueryRow(ctx, `SELECT COUNT(*) FROM complaints WHERE status = 'open'`).Scan(&openComplaints)
     var avgDepth float64
     r.db.QueryRow(ctx, `SELECT COALESCE(AVG(avg_depth_mbgl),0) FROM district_stats`).Scan(&avgDepth)
-    return totalPredictions, openComplaints, int64(avgDepth), nil
+    return totalPredictions, openComplaints, avgDepth, nil
 }
 ```
 
@@ -780,7 +969,7 @@ func (s *OverviewService) GetOverview(ctx context.Context) (dto.OverviewResponse
         TotalPredictions: predictions,
         OpenComplaints:   openComplaints,
         TotalDistricts:   11,
-        AvgDepthMbgl:     float64(avgDepth),
+        AvgDepthMbgl:     avgDepth,
     }, nil
 }
 ```
@@ -1032,67 +1221,97 @@ Because admin `RegisterRoutes` now needs the DB pool, update the router call.
 
 **In `internal/handler/router.go`**, change:
 ```go
-// Before
-handler.RegisterRoutes(adminGroup)
+// Before (admin package import usually aliased as adminHandler)
+adminHandler.RegisterRoutes(adminGroup)
 
 // After
-handler.RegisterRoutes(adminGroup, db)
+adminHandler.RegisterRoutes(adminGroup, db)
 ```
 
-And update the `RegisterRoutes` signature in `router.go` to accept `db *pgxpool.Pool`:
+Update shared router signature to accept `db *pgxpool.Pool`:
 ```go
 func RegisterRoutes(r *gin.Engine, authHandler *AuthHandler, jwtSecret string, db *pgxpool.Pool) {
 ```
 
-Then update `cmd/server/main.go` to pass `pool` as the fourth argument:
+Then update `cmd/server/main.go` to pass `dbPool` as the fourth argument:
 ```go
-handler.RegisterRoutes(router, authHandler, cfg.JWT.Secret, pool)
+handler.RegisterRoutes(r, authHandler, cfg.Auth.JWTSecret, dbPool)
+```
+
+Also ensure imports in `internal/handler/router.go` include:
+
+```go
+import (
+        adminHandler "github.com/Yogesh1022/Ground_Water_Detection/backend/internal/dashboard/admin/handler"
+        "github.com/jackc/pgx/v5/pgxpool"
+)
 ```
 
 ---
 
 ## Step 6 — Build & Verify
 
-```bash
+```powershell
 cd backend
 
 # Build check (no test DB needed)
 go build ./...
 
-# Start DB
-docker compose -f docker-compose.yml --env-file .env up -d postgres redis
+# Optional: run tests if/when test files exist
+go test ./...
+
+# If using Docker dependencies
+docker compose --env-file .env up -d postgres redis
+
+# OR if using local services, verify listeners first
+Get-NetTCPConnection -LocalPort 5432 -State Listen
+Get-NetTCPConnection -LocalPort 6379 -State Listen
 
 # Run with live reload
 air
 ```
 
+Notes:
+
+- Run `air` from `backend` (not repo root), because `go.mod` is in `backend`.
+- For host-run backend with local Postgres service, use `POSTGRES_PORT=5432` in `backend/.env`.
+- Use PostgreSQL port `5432` consistently for both local and Docker-based development in this project.
+
 ---
 
-## Step 7 — Smoke Test (curl)
+## Step 7 — Smoke Test (PowerShell)
 
-```bash
+```powershell
 # Login
-TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@aquavidarbha.in","password":"Admin@12345"}' | jq -r .token)
+$loginBody = @{ email = "admin@aquavidarbha.in"; password = "Admin@12345" } | ConvertTo-Json
+$login = Invoke-RestMethod -Method Post -Uri "http://localhost:8080/api/v1/auth/login" -ContentType "application/json" -Body $loginBody
+$token = $login.token
+$headers = @{ Authorization = "Bearer $token" }
 
 # Overview
-curl -s http://localhost:8080/api/v1/admin/overview -H "Authorization: Bearer $TOKEN" | jq
+Invoke-RestMethod -Method Get -Uri "http://localhost:8080/api/v1/admin/overview" -Headers $headers
 
 # List users
-curl -s "http://localhost:8080/api/v1/admin/users?limit=5" -H "Authorization: Bearer $TOKEN" | jq
+Invoke-RestMethod -Method Get -Uri "http://localhost:8080/api/v1/admin/users?limit=5" -Headers $headers
 
 # Create a gov officer
-curl -s -X POST http://localhost:8080/api/v1/admin/users \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"email":"officer@aq.in","password":"Gov@12345","name":"Priya Officer","role":"gov","district":"Nagpur"}' | jq
+$createUserBody = @{
+    email = "officer@aq.in"
+    password = "Gov@12345"
+    name = "Priya Officer"
+    role = "gov"
+    district = "Nagpur"
+} | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "http://localhost:8080/api/v1/admin/users" -Headers $headers -ContentType "application/json" -Body $createUserBody
 
 # Settings
-curl -s http://localhost:8080/api/v1/admin/settings -H "Authorization: Bearer $TOKEN" | jq
+Invoke-RestMethod -Method Get -Uri "http://localhost:8080/api/v1/admin/settings" -Headers $headers
 
 # Activity log
-curl -s http://localhost:8080/api/v1/admin/activity-log -H "Authorization: Bearer $TOKEN" | jq
+Invoke-RestMethod -Method Get -Uri "http://localhost:8080/api/v1/admin/activity-log" -Headers $headers
 ```
+
+If login fails with seeded admin credentials, verify seeded admin password hash in `schema.sql` is replaced with a real bcrypt hash.
 
 ---
 
@@ -1122,8 +1341,13 @@ curl -s http://localhost:8080/api/v1/admin/activity-log -H "Authorization: Beare
 ## Definition of Done
 
 - [ ] `go build ./...` passes
+- [ ] `go test ./...` passes (where tests exist)
 - [ ] All 16 endpoints return correct HTTP status codes
 - [ ] Every write endpoint creates a row in `audit_log`
 - [ ] Cannot suspend or delete own account
 - [ ] Pagination works on list endpoints
 - [ ] Gov officer account creation is functional (needed by Gov dashboard)
+- [ ] Redis cache enabled for overview (and at least one list endpoint)
+- [ ] Cache invalidation implemented on user/settings write operations
+- [ ] Router/main dependency wiring updated for DB (and Redis if used)
+- [ ] Basic operational logs show endpoint, latency, and cache hit/miss behavior

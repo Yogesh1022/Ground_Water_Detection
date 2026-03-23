@@ -1,0 +1,14 @@
+$kind: http-request
+method: PUT
+url: '{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/suspend'
+order: 4650
+headers:
+  - key: Authorization
+    value: Bearer {{adminToken}}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Admin self suspend is 400', function () {
+        pm.response.to.have.status(400);
+      });

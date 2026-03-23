@@ -1,0 +1,24 @@
+$kind: http-request
+method: PUT
+url: '{{baseUrl}}/api/v1/admin/users/{{testUserId}}'
+order: 4400
+headers:
+  - key: Authorization
+    value: Bearer {{adminToken}}
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Phase4 Test User Updated",
+      "district": "Wardha",
+      "phone": "8888888888"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Admin user update is 200', function () {
+        pm.response.to.have.status(200);
+      });

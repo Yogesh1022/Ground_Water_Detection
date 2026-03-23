@@ -1,0 +1,34 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/admin/users'
+order: 4200
+headers:
+  - key: Authorization
+    value: Bearer {{adminToken}}
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "phase4_user_test@aq.in",
+      "password": "Gov@12345",
+      "name": "Phase4 Test User",
+      "role": "gov",
+      "district": "Nagpur",
+      "phone": "9999999999"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Admin user create is 201', function () {
+        pm.response.to.have.status(201);
+      });
+
+      const json = pm.response.json();
+      pm.environment.set('testUserId', json.id);
+
+      pm.test('testUserId stored', function () {
+        pm.expect(pm.environment.get('testUserId')).to.not.be.empty;
+      });

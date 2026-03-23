@@ -1,0 +1,14 @@
+$kind: http-request
+method: DELETE
+url: '{{baseUrl}}/api/v1/admin/users/{{adminUserId}}'
+order: 4750
+headers:
+  - key: Authorization
+    value: Bearer {{adminToken}}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Admin self delete is 400', function () {
+        pm.response.to.have.status(400);
+      });

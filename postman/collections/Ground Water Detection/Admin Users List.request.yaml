@@ -1,0 +1,20 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/admin/users?page=1&limit=10'
+order: 4100
+headers:
+  - key: Authorization
+    value: Bearer {{adminToken}}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Admin users list is 200', function () {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.test('Users list contains data and meta', function () {
+        pm.expect(json).to.have.property('data');
+        pm.expect(json).to.have.property('meta');
+      });

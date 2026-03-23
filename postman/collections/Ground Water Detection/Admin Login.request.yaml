@@ -1,0 +1,40 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/auth/login'
+order: 1000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{adminEmail}}",
+      "password": "{{adminPassword}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 200', function () {
+        pm.response.to.have.status(200);
+      });
+      
+      pm.test('Response is JSON', function () {
+        pm.response.to.be.json;
+      });
+      
+      const json = pm.response.json();
+      
+      pm.test('Has token', function () {
+        pm.expect(json).to.have.property('token');
+        pm.expect(json.token).to.be.a('string').and.to.not.be.empty;
+      });
+      
+      // Save token for subsequent authenticated requests
+      pm.environment.set('token', json.token);
+      pm.environment.set('adminToken', json.token);
+      
+      pm.test("User role is 'admin'", function () {
+        pm.expect(json).to.have.nested.property('user.role', 'admin');
+      });

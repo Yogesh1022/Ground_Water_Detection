@@ -1,0 +1,11 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/admin/me'
+order: 1200
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Admin me without token is 401', function () {
+        pm.response.to.have.status(401);
+      });

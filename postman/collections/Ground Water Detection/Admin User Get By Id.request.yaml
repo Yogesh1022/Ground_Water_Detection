@@ -1,0 +1,14 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/admin/users/{{testUserId}}'
+order: 4300
+headers:
+  - key: Authorization
+    value: Bearer {{adminToken}}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Admin user get by id is 200', function () {
+        pm.response.to.have.status(200);
+      });

@@ -1,0 +1,42 @@
+$kind: collection
+name: 'Ground Water Detection'
+variables:
+  - key: baseUrl
+    value: 'http://localhost:8080'
+    description: 'Base URL for local/dev API (e.g., http://localhost:8080)'
+  - key: adminEmail
+    value: 'admin@aquavidarbha.in'
+    description: 'Admin login email'
+  - key: adminPassword
+    value: 'Admin@12345'
+    description: 'Admin login password'
+  - key: govEmail
+    value: 'gov@aquavidarbha.in'
+    description: 'Gov login email'
+  - key: govPassword
+    value: 'Gov@12345'
+    description: 'Gov login password'
+  - key: citizenEmail
+    value: 'citizen@aquavidarbha.in'
+    description: 'Citizen login email'
+  - key: citizenPassword
+    value: 'Citizen@12345'
+    description: 'Citizen login password'
+  - key: adminToken
+    value: ''
+    description: 'JWT token for admin role'
+  - key: govToken
+    value: ''
+    description: 'JWT token for gov role'
+  - key: citizenToken
+    value: ''
+    description: 'JWT token for citizen role'
+  - key: token
+    value: ''
+    description: 'Last login token (generic)'
+  - key: adminUserId
+    value: ''
+    description: 'Current logged in admin user id captured from Admin Me'
+  - key: testUserId
+    value: ''
+    description: 'Temporary user id created during Phase 4 endpoint tests'

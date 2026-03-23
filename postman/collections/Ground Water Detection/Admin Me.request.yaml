@@ -1,0 +1,21 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/admin/me'
+order: 1100
+headers:
+  - key: Authorization
+    value: Bearer {{adminToken}}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Admin me is 200', function () {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.environment.set('adminUserId', String(json.id));
+
+      pm.test('Role is admin', function () {
+        pm.expect(json).to.have.property('role', 'admin');
+      });

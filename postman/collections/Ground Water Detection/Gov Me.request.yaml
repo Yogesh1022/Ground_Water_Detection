@@ -1,0 +1,19 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/govn-user/me'
+order: 2100
+headers:
+  - key: Authorization
+    value: Bearer {{govToken}}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Gov me is 200', function () {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.test('Role is gov', function () {
+        pm.expect(json).to.have.property('role', 'gov');
+      });
