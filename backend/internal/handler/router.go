@@ -27,8 +27,7 @@ func RegisterRoutes(
 	r.POST("/api/v1/auth/login", authHandler.Login)
 
 	commonUserGroup := r.Group("/api/v1/common-user")
-	commonUserGroup.Use(middleware.Auth(jwtSecret), middleware.RequireRole("citizen"))
-	commonUserHandler.RegisterRoutes(commonUserGroup)
+	commonUserHandler.RegisterRoutes(commonUserGroup, dbPool)
 
 	adminGroup := r.Group("/api/v1/admin")
 	adminGroup.Use(middleware.Auth(jwtSecret), middleware.RequireRole("admin"))
