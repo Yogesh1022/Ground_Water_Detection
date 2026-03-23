@@ -1,6 +1,25 @@
-.PHONY: run build tidy air install-air docker-up docker-down docker-logs docker-rebuild clean phase6-gate
+.PHONY: help run build tidy clean install-air air docker-up docker-start docker-down docker-reset docker-logs docker-ps docker-db-only
 
-# ── Local dev ──────────────────────────────────────────────────────────────────
+# Run `make help` to see exact commands and their use.
+help:
+	@echo "Local development targets:"
+	@echo "  make run         -> go run ./cmd/server             (start backend without hot reload)"
+	@echo "  make build       -> go build -o ./bin/server ./cmd/server (build binary)"
+	@echo "  make tidy        -> go mod tidy                      (sync dependencies)"
+	@echo "  make clean       -> remove ./bin and ./tmp"
+	@echo "  make install-air -> go install github.com/air-verse/air@latest (install hot reload tool)"
+	@echo "  make air         -> air                              (start backend with hot reload)"
+	@echo ""
+	@echo "Docker targets (run from backend folder):"
+	@echo "  make docker-up      -> docker compose up -d --build     (build and start all services)"
+	@echo "  make docker-start   -> docker compose up -d             (start existing images)"
+	@echo "  make docker-db-only -> docker compose up -d postgres redis (start only DB + Redis)"
+	@echo "  make docker-down    -> docker compose down              (stop all services)"
+	@echo "  make docker-reset   -> docker compose down -v && docker compose up -d --build (wipe volumes and recreate)"
+	@echo "  make docker-logs    -> docker compose logs -f backend   (tail backend logs)"
+	@echo "  make docker-ps      -> docker compose ps                (service status)"
+
+# Local dev
 run:
 	go run ./cmd/server
 
@@ -16,31 +35,32 @@ tidy:
 clean:
 	rm -rf ./bin ./tmp
 
-# ── Live reload (Air) ──────────────────────────────────────────────────────────
+# Live reload (Air)
 install-air:
 	go install github.com/air-verse/air@latest
 
 air:
 	air
 
-# ── Docker ─────────────────────────────────────────────────────────────────────
+# Docker
 docker-up:
-	docker compose -f docker-compose.yml --env-file .env up -d --build
+	docker compose up -d --build
+
+docker-start:
+	docker compose up -d
+
+docker-db-only:
+	docker compose up -d postgres redis
 
 docker-down:
-	docker compose -f docker-compose.yml --env-file .env down
+	docker compose down
 
 docker-reset:
-	docker compose -f docker-compose.yml --env-file .env down -v
-	docker compose -f docker-compose.yml --env-file .env up -d --build
+	docker compose down -v
+	docker compose up -d --build
 
 docker-logs:
-	docker compose -f docker-compose.yml --env-file .env logs -f backend
+	docker compose logs -f backend
 
 docker-ps:
-	docker compose -f docker-compose.yml --env-file .env ps
-
-# ── Verification gate (Phase 6) ───────────────────────────────────────────────
-phase6-gate:
-	go build ./...
-	powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-api.ps1
+	docker compose ps

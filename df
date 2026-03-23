@@ -1,0 +1,169 @@
+[33mcommit 534e1a860bb11145c4e7b9772c8d20d86dd52721[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Sat Mar 14 15:15:00 2026 +0530
+
+     Add implementation plan
+
+[33mcommit 93f507a5952a9f8ed3fa93e055680360d9ea9c71[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Sat Mar 14 14:48:25 2026 +0530
+
+    Runnign backend without error
+
+[33mcommit d9ccef94ca926337dadd17fcac05ddc2d3ba8c98[m
+Merge: 77da96d 6e6702a
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Sat Mar 14 14:10:42 2026 +0530
+
+    Merge branch 'yogesh' into main: Docker setup, Makefile, Air config, module rename, gitignore fix
+
+[33mcommit 6e6702a76968b6839505d6e6edbe7589235af08e[m[33m ([m[1;31morigin/yogesh[m[33m)[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Sat Mar 14 14:06:04 2026 +0530
+
+    Add makefile and air folder to backend
+
+[33mcommit bec8bec23b1619dc852cee8f5351dd785f9385cc[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Sat Mar 14 10:48:00 2026 +0530
+
+     create database and set the db schema
+
+[33mcommit 36e4e87ba243821a116165a66dce3519d9e8d967[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Fri Mar 13 21:08:30 2026 +0530
+
+    add backend roadmap and docs updates
+
+[33mcommit 237a856a494b45a514f744d642102b053c455ea4[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Fri Mar 13 20:23:01 2026 +0530
+
+    remove unwanted files
+
+[33mcommit e74e06cd12e9f6fba51fba0a0fb947ea8847d011[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Fri Mar 13 12:33:03 2026 +0530
+
+     Complete backend plan change and creating dashboad folder for proper understanding
+
+[33mcommit 3324cb63467d052ff50fb2c9a72ffdc22e763f22[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Fri Mar 13 11:57:38 2026 +0530
+
+    db schema created and sent for verification to gaurav
+
+[33mcommit 99ec5ab14098f0af6045609731090330f2107338[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Fri Mar 13 10:16:32 2026 +0530
+
+     implemeetation of go  and set up all the packegas and dependancy alog with all config file and auth file
+
+[33mcommit 1c24db1904cf8b639a47fe1f760307c607b98c72[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Thu Mar 12 11:07:57 2026 +0530
+
+    updated plan for user dashboard
+
+[33mcommit fee4aaa2bfa0c828ee8ce08fed79d66ff1f092ec[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Wed Mar 11 12:31:51 2026 +0530
+
+    complete 10 days plan for the backend implementation from scratch
+
+[33mcommit 6d3f6feacdb5d9d087d2f21b54445fd167d1e2fb[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Tue Mar 10 07:21:17 2026 +0530
+
+    model train lstm, random forest without lab feature, boost
+
+[33mcommit 27cd510733e8fa1937ebddcd400853cdf13492d7[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Tue Mar 10 07:02:09 2026 +0530
+
+    improve lstm and boost
+
+[33mcommit 3711193a97797a8383e38437b0d8bbc3a43161a7[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Tue Mar 10 06:33:55 2026 +0530
+
+    feat(env-engine): finalize Path 3 RF model with 28 features (Test R²=0.91)
+    
+    - Remove depth lag features (depth_lag_1q/2q, depth_change_rate) — Path 3 only
+    - Add coarse spatial bins: lat_bin (4 N-S zones) + lon_bin (5 E-W zones) via qcut
+    - Add elevation_rank_in_district [0–1] for upland/lowland topographic position
+    - Add district_mean_depth + district_std_depth (training-period only, no leakage)
+    - Replace per-well/district anomaly decomposition with direct depth_mbgl prediction
+    - Tune: n_estimators=800, max_depth=None, min_samples_leaf=2
+    - Clarify GroupCV R²=0.09 is the honest ceiling (local geology not in features)
+    - Primary metric: Temporal Test R²=0.9116 ✅ (target ≥ 0.72)
+    - Save model → outputs/random_forest/env_engine_rf.pkl (1.76 GB)
+
+[33mcommit 18d08da1ddcb758b9cc56dbab4975f7dbab48654[m
+Merge: 77da96d ac0f05e
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Sat Feb 28 16:59:53 2026 +0530
+
+     mearge model train implementaion into the yogesh branch
+
+[33mcommit ac0f05eefac7385bc704a2cb2072009bb81b76b4[m
+Author: Gaurav Ingle <ingleg377@gmail.com>
+Date:   Sat Feb 28 12:02:12 2026 +0530
+
+    Add README for groundwater depth prediction system
+    
+    Added comprehensive documentation for the AI-Based Groundwater Depth Prediction System, including project overview, system architecture, dataset summary, engine details, training workflow, and future work.
+
+[33mcommit 47f2432ab2e56cde1b85f92ae13c1e24d21c21f6[m
+Author: GauravING <ingleg377@gmail.com>
+Date:   Sat Feb 28 11:53:34 2026 +0530
+
+     this includes the complete model workflow and strategy for implementation
+
+[33mcommit 77da96dd656c8d9b3f44e7b5ca748e7c4762b560[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Sat Feb 28 10:53:13 2026 +0530
+
+    Xgboost is train and lstm is on training
+
+[33mcommit d5df36933a67f3030641294bb42a3fbf9831158c[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Tue Feb 24 10:30:54 2026 +0530
+
+    implementing training algo md
+
+[33mcommit b26c2ad786f004c7efb8cd1ab5c9a9ef8eaef8d2[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Mon Feb 23 11:36:50 2026 +0530
+
+    Data analysis part ia done
+
+[33mcommit eeca197db931842e92ebfd3815efece19fb5acf9[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Wed Feb 18 12:17:25 2026 +0530
+
+    create the dataset base on time series
+
+[33mcommit 170a591796629b38da5663e68c543a75be9681f0[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Thu Feb 12 12:07:19 2026 +0530
+
+      add 4 extra feature in  the dataset
+
+[33mcommit 5e1bc40e0fd962bc98abb002462c6861bb72c0ca[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Thu Feb 12 11:50:55 2026 +0530
+
+    BRD is ready and it is pushed on the repo
+
+[33mcommit 4be646a8e10e602952f399d0a24b9add0d1de676[m
+Author: Yogesh1022 <24f1002212@ds.study.iitm.ac.in>
+Date:   Thu Feb 12 11:17:10 2026 +0530
+
+     initital commit
+
+[33mcommit 18351bd7e22b26314b381bc8361d8f3017a9f1d9[m
+Author: Yogeshvar Chaudhari <122379643+Yogesh1022@users.noreply.github.com>
+Date:   Thu Feb 12 11:12:09 2026 +0530
+
+    Initial commit

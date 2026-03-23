@@ -21,7 +21,7 @@ func RegisterRoutes(
 	redisClient *redis.Client,
 ) {
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		c.JSON(http.StatusOK, gin.H{"status": "ok, running backend"})
 	})
 
 	r.POST("/api/v1/auth/login", authHandler.Login)
