@@ -545,15 +545,15 @@ BEFORE UPDATE ON task_assignments
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ---------------------------------------------------------------------------
--- Seed: default admin user  (password: Admin@12345  → bcrypt cost 12)
+-- Seed: default admin user  (password: Admin@12345  -> bcrypt cost 12)
 -- IMPORTANT: Change this password immediately in production.
--- Generate fresh hash with: htpasswd -bnBC 12 "" Admin@12345 | tr -d ':'
+-- Uses pgcrypto to generate a valid bcrypt hash at initialization time.
 -- ---------------------------------------------------------------------------
 
 INSERT INTO users (email, password_hash, name, role, is_active)
 VALUES (
     'admin@aquavidarbha.in',
-    '$2a$12$placeholderHashReplaceBeforeDeployment000000000000000000000',
+    crypt('Admin@12345', gen_salt('bf', 12)),
     'System Administrator',
     'admin',
     TRUE

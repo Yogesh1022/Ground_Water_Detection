@@ -1,20 +1,20 @@
 package handler
 
 import (
-	"net/http"
-
-	"github.com/Yogesh1022/Ground_Water_Detection/backend/internal/middleware"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// RegisterRoutes registers starter endpoints for the common user dashboard.
-func RegisterRoutes(rg *gin.RouterGroup) {
-	rg.GET("/me", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"id":    c.GetInt64(middleware.ContextUserIDKey),
-			"name":  c.GetString(middleware.ContextNameKey),
-			"email": c.GetString(middleware.ContextEmailKey),
-			"role":  c.GetString(middleware.ContextRoleKey),
-		})
-	})
+// RegisterRoutes registers common user endpoints.
+func RegisterRoutes(rg *gin.RouterGroup, db *pgxpool.Pool) {
+	h := NewCommonUserHandler(db)
+
+	rg.GET("/me", h.getProfile)
+	rg.GET("/wells", h.listWells)
+	rg.GET("/wells/:id", h.getWell)
+	rg.GET("/districts/summary", h.districtSummary)
+	rg.GET("/alerts", h.listAlerts)
+	rg.POST("/predict", h.predict)
+	rg.POST("/complaints", h.createComplaint)
+	rg.GET("/complaints/track/:tracking", h.trackComplaint)
 }

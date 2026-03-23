@@ -21,14 +21,13 @@ func RegisterRoutes(
 	redisClient *redis.Client,
 ) {
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		c.JSON(http.StatusOK, gin.H{"status": "ok, running backend"})
 	})
 
 	r.POST("/api/v1/auth/login", authHandler.Login)
 
 	commonUserGroup := r.Group("/api/v1/common-user")
-	commonUserGroup.Use(middleware.Auth(jwtSecret), middleware.RequireRole("citizen"))
-	commonUserHandler.RegisterRoutes(commonUserGroup)
+	commonUserHandler.RegisterRoutes(commonUserGroup, dbPool)
 
 	adminGroup := r.Group("/api/v1/admin")
 	adminGroup.Use(middleware.Auth(jwtSecret), middleware.RequireRole("admin"))

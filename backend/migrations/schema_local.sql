@@ -478,7 +478,7 @@ BEFORE UPDATE ON task_assignments FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 INSERT INTO users (email, password_hash, name, role, is_active)
 VALUES (
     'admin@aquavidarbha.in',
-    '$2a$12$placeholderHashReplaceBeforeDeployment000000000000000000000',
+    crypt('Admin@12345', gen_salt('bf', 12)),
     'System Administrator',
     'admin',
     TRUE
