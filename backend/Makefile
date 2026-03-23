@@ -1,4 +1,4 @@
-.PHONY: run build tidy air install-air docker-up docker-down docker-logs docker-rebuild clean
+.PHONY: run build tidy air install-air docker-up docker-down docker-logs docker-rebuild clean phase6-gate
 
 # ── Local dev ──────────────────────────────────────────────────────────────────
 run:
@@ -6,6 +6,9 @@ run:
 
 build:
 	go build -o ./bin/server ./cmd/server
+
+build-all:
+	go build ./...
 
 tidy:
 	go mod tidy
@@ -36,3 +39,8 @@ docker-logs:
 
 docker-ps:
 	docker compose -f docker-compose.yml --env-file .env ps
+
+# ── Verification gate (Phase 6) ───────────────────────────────────────────────
+phase6-gate:
+	go build ./...
+	powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-api.ps1
