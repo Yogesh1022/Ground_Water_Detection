@@ -40,3 +40,9 @@ variables:
   - key: testUserId
     value: ''
     description: 'Temporary user id created during Phase 4 endpoint tests'
+  - key: commonWellId
+    value: '1'
+    description: 'Well id captured from Common User Wells List request'
+  - key: commonComplaintTracking
+    value: ''
+    description: 'Tracking number captured from Common User Complaint Create request'

@@ -52,3 +52,11 @@ values:
     value: ''
     enabled: true
     type: default
+  - key: commonWellId
+    value: '1'
+    enabled: true
+    type: default
+  - key: commonComplaintTracking
+    value: ''
+    enabled: true
+    type: default
