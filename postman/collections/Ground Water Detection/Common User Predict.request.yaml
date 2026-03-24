@@ -1,0 +1,31 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/common-user/predict'
+order: 6600
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "latitude": 21.1458,
+      "longitude": 79.0882,
+      "rainfall_mm": 22.5,
+      "temperature_c": 31.2,
+      "humidity_pct": 58,
+      "ndvi": 0.43
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Common user predict is 200', function () {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.test('Predict response has depth and risk', function () {
+        pm.expect(json).to.have.property('depth_mbgl');
+        pm.expect(json).to.have.property('risk_level');
+      });

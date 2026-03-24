@@ -1,0 +1,32 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/common-user/complaints'
+order: 6700
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "type": "water_shortage",
+      "district": "Nagpur",
+      "taluka": "Nagpur Rural",
+      "village": "Sample Village",
+      "severity": "high",
+      "description": "Water supply has been unavailable for several days in our area."
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Common user complaint create is 201', function () {
+        pm.response.to.have.status(201);
+      });
+
+      const json = pm.response.json();
+      pm.environment.set('commonComplaintTracking', json.tracking_number || '');
+
+      pm.test('Complaint tracking number captured', function () {
+        pm.expect(pm.environment.get('commonComplaintTracking')).to.not.be.empty;
+      });

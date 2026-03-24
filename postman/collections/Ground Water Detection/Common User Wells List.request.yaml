@@ -1,0 +1,21 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/common-user/wells?page=1&limit=5'
+order: 6200
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Common user wells list is 200', function () {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.test('Wells list has data and meta', function () {
+        pm.expect(json).to.have.property('data');
+        pm.expect(json).to.have.property('meta');
+      });
+
+      if (Array.isArray(json.data) && json.data.length > 0 && json.data[0].id) {
+        pm.environment.set('commonWellId', json.data[0].id);
+      }

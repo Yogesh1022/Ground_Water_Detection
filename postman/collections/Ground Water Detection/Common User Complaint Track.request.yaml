@@ -1,0 +1,16 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/common-user/complaints/track/{{commonComplaintTracking}}'
+order: 6800
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Common user complaint track is 200', function () {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.test('Tracked complaint has tracking_number', function () {
+        pm.expect(json).to.have.property('tracking_number');
+      });
