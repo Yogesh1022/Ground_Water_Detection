@@ -23,6 +23,8 @@ env/
 
 # Node.js
 node_modules/
+frontend/node_modules/
+frontend/web/node_modules/
 
 # Next.js
 .next/
@@ -31,6 +33,15 @@ out/
 # Build outputs
 outputs/
 tsconfig.tsbuildinfo
+*.tsbuildinfo
+frontend/web/dist/
+frontend/web/.vite/
+tmp/
+
+# Frontend env files
+frontend/web/.env
+frontend/web/.env.local
+frontend/web/.env*.local
 
 # Saved models (large binary files)
 saved_models/
