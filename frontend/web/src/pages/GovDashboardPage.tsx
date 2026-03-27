@@ -18,6 +18,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { Bar, Doughnut, Line, Scatter } from "react-chartjs-2";
 import { getGovProfile } from "../features/gov/api/govApi";
+import ChartErrorBoundary from "../components/ChartErrorBoundary";
 import "../styles/gov-dashboard.css";
 
 type GovPage = "overview" | "requests" | "districts" | "forecast" | "assign" | "tankers" | "reports" | "activity";
@@ -225,11 +226,19 @@ export default function GovDashboardPage() {
       <div className="g-grid-2">
         <section className="g-card">
           <div className="g-card-head">Requests by Category</div>
-          <div className="g-chart-wrap"><Doughnut data={commandCenterData.category} options={{ responsive: true, maintainAspectRatio: false }} /></div>
+          <div className="g-chart-wrap">
+            <ChartErrorBoundary fallbackText="Category chart unavailable.">
+              <Doughnut data={commandCenterData.category} options={{ responsive: true, maintainAspectRatio: false }} />
+            </ChartErrorBoundary>
+          </div>
         </section>
         <section className="g-card">
           <div className="g-card-head">District Crisis Index</div>
-          <div className="g-chart-wrap"><Bar data={commandCenterData.crisis} options={chartOptions} /></div>
+          <div className="g-chart-wrap">
+            <ChartErrorBoundary fallbackText="Crisis index chart unavailable.">
+              <Bar data={commandCenterData.crisis} options={chartOptions} />
+            </ChartErrorBoundary>
+          </div>
         </section>
       </div>
 
@@ -291,11 +300,19 @@ export default function GovDashboardPage() {
         <div className="g-grid-2">
           <section className="g-card">
             <div className="g-card-head">Groundwater Levels by District</div>
-            <div className="g-chart-wrap"><Bar data={districtData.groundwater} options={{ ...chartOptions, indexAxis: "y" as const }} /></div>
+            <div className="g-chart-wrap">
+              <ChartErrorBoundary fallbackText="Groundwater chart unavailable.">
+                <Bar data={districtData.groundwater} options={{ ...chartOptions, indexAxis: "y" as const }} />
+              </ChartErrorBoundary>
+            </div>
           </section>
           <section className="g-card">
             <div className="g-card-head">Rainfall vs Depth Scatter</div>
-            <div className="g-chart-wrap"><Scatter data={districtData.rainfallDepth} options={chartOptions} /></div>
+            <div className="g-chart-wrap">
+              <ChartErrorBoundary fallbackText="Scatter chart unavailable.">
+                <Scatter data={districtData.rainfallDepth} options={chartOptions} />
+              </ChartErrorBoundary>
+            </div>
           </section>
         </div>
 
@@ -326,12 +343,20 @@ export default function GovDashboardPage() {
       <div className="g-grid-2">
         <section className="g-card">
           <div className="g-card-head">90-Day Groundwater Forecast</div>
-          <div className="g-chart-wrap g-chart-tall"><Line data={forecastData.depth90} options={chartOptions} /></div>
+          <div className="g-chart-wrap g-chart-tall">
+            <ChartErrorBoundary fallbackText="Forecast chart unavailable.">
+              <Line data={forecastData.depth90} options={chartOptions} />
+            </ChartErrorBoundary>
+          </div>
           <div className="g-note"><strong>Ensemble:</strong> XGBoost + RF + LSTM + GRU · R² 0.89 · RMSE 0.43m</div>
         </section>
         <section className="g-card">
           <div className="g-card-head">SHAP Feature Importance</div>
-          <div className="g-chart-wrap g-chart-tall"><Bar data={forecastData.shap} options={{ ...chartOptions, indexAxis: "y" as const }} /></div>
+          <div className="g-chart-wrap g-chart-tall">
+            <ChartErrorBoundary fallbackText="SHAP chart unavailable.">
+              <Bar data={forecastData.shap} options={{ ...chartOptions, indexAxis: "y" as const }} />
+            </ChartErrorBoundary>
+          </div>
         </section>
       </div>
 

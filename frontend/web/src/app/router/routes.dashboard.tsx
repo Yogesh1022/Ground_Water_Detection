@@ -4,22 +4,14 @@ import AdminDashboardPage from "../../pages/AdminDashboardPage";
 import GovDashboardPage from "../../pages/GovDashboardPage";
 import RoleGuard from "./RoleGuard";
 
-export const protectedRoutes: RouteObject[] = [
+export const dashboardRoutes: RouteObject[] = [
   {
     path: "/dashboard-user",
-    element: (
-      <RoleGuard allowRoles={["citizen", "user"]}>
-        <App />
-      </RoleGuard>
-    )
+    element: <App />
   },
   {
     path: "/dashboard-user/*",
-    element: (
-      <RoleGuard allowRoles={["citizen", "user"]}>
-        <App />
-      </RoleGuard>
-    )
+    element: <App />
   },
   {
     path: "/dashboard-admin",
