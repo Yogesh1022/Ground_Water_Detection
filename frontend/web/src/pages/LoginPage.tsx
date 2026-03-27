@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, Droplets, Globe2, Landmark, Lock, LogIn, Shield, User } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { resolveDashboardPathForRole } from "../features/auth/utils/roleRedirect";
 import "../styles/login.css";
 
 type Role = "gov" | "admin";
@@ -14,6 +15,8 @@ export default function LoginPage() {
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("Invalid credentials. Please try again.");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const handleMouseMove = (event: MouseEvent) => {
@@ -117,31 +120,74 @@ export default function LoginPage() {
     };
   }, []);
 
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setShowError(false);
+    setErrorMessage("Invalid credentials. Please try again.");
 
-    const trimmedId = loginId.trim();
+    const authBaseUrl = (import.meta.env.VITE_AUTH_BASE_URL || "http://localhost:8080/api/v1/auth").replace(/\/$/, "");
 
-    const govValid = role === "gov" && trimmedId === "officer1" && password === "aqua2026";
-    const adminValid = role === "admin" && trimmedId === "admin" && password === "admin2026";
+    const rawId = loginId.trim();
+    const derivedEmail =
+      rawId.includes("@")
+        ? rawId.toLowerCase()
+        : role === "admin" && rawId.toLowerCase() === "admin"
+          ? "admin@aquavidarbha.in"
+          : rawId;
 
-    if (govValid) {
-      sessionStorage.setItem("aqua_role", "gov");
-      sessionStorage.setItem("aqua_user", "Officer Kulkarni");
-      navigate("/dashboard-user");
+    if (!derivedEmail.includes("@")) {
+      setErrorMessage("Please enter a registered email ID.");
+      window.requestAnimationFrame(() => setShowError(true));
       return;
     }
 
-    if (adminValid) {
-      sessionStorage.setItem("aqua_role", "admin");
-      sessionStorage.setItem("aqua_user", "Admin Sharma");
-      navigate("/dashboard-user");
-      return;
-    }
+    setIsSubmitting(true);
 
-    setShowError(false);
-    window.requestAnimationFrame(() => setShowError(true));
+    try {
+      const response = await fetch(`${authBaseUrl}/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email: derivedEmail,
+          password
+        })
+      });
+
+      const payload = await response.json().catch(() => ({} as Record<string, unknown>));
+
+      if (!response.ok) {
+        const message = typeof payload.error === "string" ? payload.error : "Login failed";
+        throw new Error(message);
+      }
+
+      const user = (payload.user ?? {}) as {
+        id?: number;
+        email?: string;
+        name?: string;
+        role?: string;
+      };
+      const token = typeof payload.token === "string" ? payload.token : "";
+
+      if (!user.role || user.role !== role) {
+        throw new Error(`This account is ${user.role || "unknown"}. Select the correct role tab.`);
+      }
+
+      sessionStorage.setItem("aqua_role", user.role);
+      sessionStorage.setItem("aqua_user", user.name || user.email || "User");
+      sessionStorage.setItem("aqua_user_email", user.email || derivedEmail);
+      sessionStorage.setItem("aqua_user_id", String(user.id || ""));
+      sessionStorage.setItem("aqua_token", token);
+
+      navigate(resolveDashboardPathForRole(user.role));
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Login failed");
+      setShowError(false);
+      window.requestAnimationFrame(() => setShowError(true));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -188,17 +234,17 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className={`login-error ${showError ? "show" : ""}`}>Invalid credentials. Please try again.</div>
+          <div className={`login-error ${showError ? "show" : ""}`}>{errorMessage}</div>
 
           <form onSubmit={onSubmit}>
             <div className="form-group">
-              <label className="form-label">Login ID</label>
+              <label className="form-label">Email ID</label>
               <div className="form-input-wrap">
                 <User size={18} />
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Enter your login ID"
+                  placeholder="Enter your registered email"
                   required
                   autoComplete="username"
                   value={loginId}
@@ -223,31 +269,31 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <button type="submit" className={`login-btn ${role === "admin" ? "admin-theme" : ""}`}>
+            <button type="submit" className={`login-btn ${role === "admin" ? "admin-theme" : ""}`} disabled={isSubmitting}>
               <LogIn size={18} />
-              <span>{role === "gov" ? "Sign In as Officer" : "Sign In as Admin"}</span>
+              <span>{isSubmitting ? "Signing In..." : role === "gov" ? "Sign In as Officer" : "Sign In as Admin"}</span>
             </button>
           </form>
 
           <div className="demo-creds">
-            <strong>Demo Credentials</strong>
+            <strong>Backend Credentials</strong>
             <div className="demo-grid">
               <div>
                 <div className="demo-title demo-gov">GOV OFFICER</div>
                 <div>
-                  ID: <span className="mono">officer1</span>
+                  ID: <span className="mono">Use gov user email</span>
                 </div>
                 <div>
-                  Pass: <span className="mono">aqua2026</span>
+                  Pass: <span className="mono">Created by Admin</span>
                 </div>
               </div>
               <div>
                 <div className="demo-title demo-admin">ADMIN</div>
                 <div>
-                  ID: <span className="mono">admin</span>
+                  ID: <span className="mono">admin@aquavidarbha.in</span>
                 </div>
                 <div>
-                  Pass: <span className="mono">admin2026</span>
+                  Pass: <span className="mono">Admin@12345</span>
                 </div>
               </div>
             </div>
