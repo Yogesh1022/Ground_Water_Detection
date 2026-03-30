@@ -10,6 +10,7 @@ import (
 	commonService "github.com/Yogesh1022/Ground_Water_Detection/backend/internal/dashboard/common_user/service"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 type CommonUserHandler struct {
@@ -19,9 +20,10 @@ type CommonUserHandler struct {
 	districtSvc  *commonService.DistrictService
 	complaintSvc *commonService.ComplaintService
 	predictSvc   *commonService.PredictService
+	cache        *commonCache
 }
 
-func NewCommonUserHandler(db *pgxpool.Pool) *CommonUserHandler {
+func NewCommonUserHandler(db *pgxpool.Pool, redisClient *redis.Client) *CommonUserHandler {
 	wellRepo := repository.NewWellRepo(db)
 	alertRepo := repository.NewAlertRepo(db)
 	complaintRepo := repository.NewComplaintRepo(db)
@@ -34,6 +36,7 @@ func NewCommonUserHandler(db *pgxpool.Pool) *CommonUserHandler {
 		districtSvc:  commonService.NewDistrictService(wellRepo),
 		complaintSvc: commonService.NewComplaintService(complaintRepo),
 		predictSvc:   commonService.NewPredictService(predictionRepo),
+		cache:        newCommonCache(redisClient),
 	}
 }
 

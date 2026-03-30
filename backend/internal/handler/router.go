@@ -27,7 +27,7 @@ func RegisterRoutes(
 	r.POST("/api/v1/auth/login", authHandler.Login)
 
 	commonUserGroup := r.Group("/api/v1/common-user")
-	commonUserHandler.RegisterRoutes(commonUserGroup, dbPool)
+	commonUserHandler.RegisterRoutes(commonUserGroup, dbPool, redisClient)
 
 	adminGroup := r.Group("/api/v1/admin")
 	adminGroup.Use(middleware.Auth(jwtSecret), middleware.RequireRole("admin"))
@@ -35,5 +35,5 @@ func RegisterRoutes(
 
 	govnUserGroup := r.Group("/api/v1/govn-user")
 	govnUserGroup.Use(middleware.Auth(jwtSecret), middleware.RequireRole("gov"))
-	govnUserHandler.RegisterRoutes(govnUserGroup)
+	govnUserHandler.RegisterRoutes(govnUserGroup, dbPool, redisClient)
 }
