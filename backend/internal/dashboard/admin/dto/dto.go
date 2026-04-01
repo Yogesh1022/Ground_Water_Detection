@@ -159,6 +159,8 @@ type AuditLogQuery struct {
 	ActorID     int64  `form:"actor_id"`
 	Action      string `form:"action"`
 	TargetTable string `form:"target_table"`
+	StartDate   string `form:"start_date"`
+	EndDate     string `form:"end_date"`
 }
 
 type AuditLogEntry struct {

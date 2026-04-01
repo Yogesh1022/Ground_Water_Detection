@@ -133,12 +133,14 @@ func buildUsersCacheKey(q dto.ListUsersQuery) string {
 
 func buildAuditLogCacheKey(q dto.AuditLogQuery) string {
 	raw := fmt.Sprintf(
-		"page=%d|limit=%d|actor_id=%d|action=%s|target_table=%s",
+		"page=%d|limit=%d|actor_id=%d|action=%s|target_table=%s|start_date=%s|end_date=%s",
 		q.Page,
 		q.Limit,
 		q.ActorID,
 		strings.TrimSpace(strings.ToLower(q.Action)),
 		strings.TrimSpace(strings.ToLower(q.TargetTable)),
+		strings.TrimSpace(q.StartDate),
+		strings.TrimSpace(q.EndDate),
 	)
 
 	return "admin:audit:" + hashKey(raw)

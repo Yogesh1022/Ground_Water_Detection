@@ -473,13 +473,16 @@ export default function GovDashboardPage() {
 
   return (
     <div className="g-root">
+      {/* Off-canvas/drawer sidebar */}
       <aside className={`g-sidebar ${collapsed ? "collapsed" : ""} ${mobileOpen ? "open" : ""}`}>
         <div className="g-sidebar-header">
-          <div className="g-logo"><Landmark size={18} /></div>
-          <div className="g-brand-text">
-            <strong>AquaVidarbha</strong>
-            <span>GOV OFFICER PORTAL</span>
-          </div>
+          <div className="g-logo"><Landmark size={22} /></div>
+          {!collapsed && (
+            <div className="g-brand-text">
+              <strong>AquaVidarbha</strong>
+              <span>WATER DASHBOARD</span>
+            </div>
+          )}
         </div>
 
         <nav className="g-nav">
@@ -494,24 +497,25 @@ export default function GovDashboardPage() {
                     setActivePage(item.key);
                     setMobileOpen(false);
                   }}
+                  title={item.label}
                 >
-                  <Icon size={16} />
-                  <span>{item.label}</span>
-                  {item.badge ? <span className="g-nav-badge">{item.badge}</span> : null}
+                  <Icon size={22} />
+                  {!collapsed && <span>{item.label}</span>}
+                  {item.badge && !collapsed && <span className="g-nav-badge">{item.badge}</span>}
                 </button>
               </div>
             );
           })}
 
-          <button className="g-nav-item" onClick={() => navigate("/")}>
-            <Home size={16} />
-            <span>Home</span>
+          <button className="g-nav-item" onClick={() => navigate("/")} title="Home">
+            <Home size={22} />
+            {!collapsed && <span>Home</span>}
           </button>
         </nav>
 
         <div className="g-sidebar-footer">
-          <div className="g-user-pill">{officerName}</div>
-          <button className="g-btn g-btn-ghost" onClick={logout}><LogOut size={14} /> Logout</button>
+          {!collapsed && <div className="g-user-pill">{officerName}</div>}
+          <button className="g-btn g-btn-ghost" onClick={logout}><LogOut size={14} /> {!collapsed && "Logout"}</button>
         </div>
       </aside>
 
