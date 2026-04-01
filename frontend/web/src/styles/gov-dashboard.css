@@ -21,6 +21,17 @@
 .g-sidebar.collapsed {
   width: 76px;
 }
+.g-sidebar.collapsed .g-brand-text,
+.g-sidebar.collapsed .g-user-pill,
+.g-sidebar.collapsed .g-nav-item span,
+.g-sidebar.collapsed .g-nav-badge {
+  display: none !important;
+}
+.g-sidebar.collapsed .g-logo {
+  width: 38px;
+  height: 38px;
+  margin: 0 auto;
+}
 
 .g-sidebar-header {
   min-height: 68px;
@@ -48,6 +59,7 @@
   flex-direction: column;
   white-space: nowrap;
   overflow: hidden;
+  transition: opacity 0.2s;
 }
 
 .g-brand-text strong {
@@ -89,6 +101,7 @@
   cursor: pointer;
   font-size: 0.84rem;
   font-weight: 500;
+  transition: background 0.2s, color 0.2s;
 }
 
 .g-nav-item:hover {
@@ -132,6 +145,7 @@
 .g-main {
   margin-left: 260px;
   width: calc(100% - 260px);
+  min-height: 100vh;
   transition: margin-left 0.25s ease, width 0.25s ease;
 }
 
@@ -567,8 +581,8 @@
 
   .g-main,
   .g-main.expanded {
-    margin-left: 0;
-    width: 100%;
+    margin-left: 0 !important;
+    width: 100% !important;
   }
 
   .g-kpi-row {
