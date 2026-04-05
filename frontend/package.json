@@ -7,6 +7,7 @@
     "web"
   ],
   "scripts": {
+    "start": "npm run start --workspace=web",
     "dev": "npm run dev --workspace=web",
     "build": "npm run build --workspace=web",
     "preview": "npm run preview --workspace=web"

@@ -1,10 +1,13 @@
 -- Seed data for Gov Officer dashboard smoke/demo
 -- Run after schema.sql
 
+-- NOTE: Password hashes must be bcrypt, because /api/v1/auth/login uses bcrypt.CompareHashAndPassword.
+-- Demo passwords below are only for local/dev.
+
 -- Users
 INSERT INTO users (email, password_hash, name, role, district, phone) VALUES
-('gov.amravati@example.com', 'demo-hash', 'Officer Amravati', 'gov', 'Amravati', '9000000001'),
-('gov.yavatmal@example.com', 'demo-hash', 'Officer Yavatmal', 'gov', 'Yavatmal', '9000000002')
+('gov.amravati@example.com', crypt('Gov@12345', gen_salt('bf', 12)), 'Officer Amravati', 'gov', 'Amravati', '9000000001'),
+('gov.yavatmal@example.com', crypt('Gov@12345', gen_salt('bf', 12)), 'Officer Yavatmal', 'gov', 'Yavatmal', '9000000002')
 ON CONFLICT (email) DO NOTHING;
 
 -- Complaints (subset)

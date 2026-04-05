@@ -81,7 +81,7 @@ type RequestOptions = {
   body?: unknown;
 };
 
-const ADMIN_BASE_URL = (import.meta.env.VITE_ADMIN_BASE_URL || "http://localhost:8080/api/v1/admin").replace(/\/$/, "");
+const ADMIN_BASE_URL = (import.meta.env.VITE_ADMIN_BASE_URL || "/api/v1/admin").replace(/\/$/, "");
 
 function withQuery(path: string, query?: RequestOptions["query"]): string {
   const url = new URL(`${ADMIN_BASE_URL}${path}`);

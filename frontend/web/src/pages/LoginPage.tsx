@@ -36,6 +36,8 @@ export default function LoginPage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    const context = ctx;
+
     let width = 0;
     let height = 0;
     let frameId = 0;
@@ -69,10 +71,10 @@ export default function LoginPage() {
       }
 
       draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(34,211,238,${this.a})`;
-        ctx.fill();
+        context.beginPath();
+        context.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+        context.fillStyle = `rgba(34,211,238,${this.a})`;
+        context.fill();
       }
     }
 
@@ -87,7 +89,7 @@ export default function LoginPage() {
     const particles = Array.from({ length: 50 }, () => new Particle());
 
     const animate = () => {
-      ctx.clearRect(0, 0, width, height);
+      context.clearRect(0, 0, width, height);
 
       for (const p of particles) {
         p.update();
@@ -100,11 +102,11 @@ export default function LoginPage() {
           const dy = particles[i].y - particles[j].y;
           const d = Math.sqrt(dx * dx + dy * dy);
           if (d < 120) {
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(34,211,238,${0.04 * (1 - d / 120)})`;
-            ctx.stroke();
+            context.beginPath();
+            context.moveTo(particles[i].x, particles[i].y);
+            context.lineTo(particles[j].x, particles[j].y);
+            context.strokeStyle = `rgba(34,211,238,${0.04 * (1 - d / 120)})`;
+            context.stroke();
           }
         }
       }
@@ -125,7 +127,7 @@ export default function LoginPage() {
     setShowError(false);
     setErrorMessage("Invalid credentials. Please try again.");
 
-    const authBaseUrl = (import.meta.env.VITE_AUTH_BASE_URL || "http://localhost:8080/api/v1/auth").replace(/\/$/, "");
+    const authBaseUrl = (import.meta.env.VITE_AUTH_BASE_URL || "/api/v1/auth").replace(/\/$/, "");
 
     const rawId = loginId.trim();
     const derivedEmail =

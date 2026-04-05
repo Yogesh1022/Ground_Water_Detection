@@ -56,7 +56,7 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (LoginR
 	const q = `
 	SELECT id, email, name, role, password_hash, is_active
 	FROM users
-	WHERE email = $1
+	WHERE LOWER(email) = LOWER($1)
 	LIMIT 1`
 
 	var user User
