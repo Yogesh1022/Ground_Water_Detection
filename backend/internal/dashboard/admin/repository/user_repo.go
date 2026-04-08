@@ -103,7 +103,7 @@ func (r *UserRepo) Create(ctx context.Context, req dto.CreateUserRequest) (dto.U
 	err = r.db.QueryRow(
 		ctx,
 		`INSERT INTO users (email, password_hash, name, role, district, phone)
-		 VALUES ($1, $2, $3, $4, NULLIF($5,''), NULLIF($6,''))
+		 VALUES (LOWER($1), $2, $3, $4, NULLIF($5,''), NULLIF($6,''))
 		 RETURNING id, email, name, role, COALESCE(district,''), COALESCE(phone,''), is_active, created_at`,
 		req.Email,
 		string(hash),

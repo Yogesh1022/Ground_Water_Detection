@@ -5,7 +5,7 @@ export interface GovProfile {
   role: string;
 }
 
-const GOV_BASE_URL = (import.meta.env.VITE_GOV_BASE_URL || "http://localhost:8080/api/v1/govn-user").replace(/\/$/, "");
+const GOV_BASE_URL = (import.meta.env.VITE_GOV_BASE_URL || "/api/v1/govn-user").replace(/\/$/, "");
 
 function getErrorMessage(payload: unknown, fallback: string): string {
   if (!payload) return fallback;
