@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
-	"time"
 
 	"github.com/Yogesh1022/Ground_Water_Detection/backend/internal/dashboard/admin/dto"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -72,25 +70,6 @@ func (r *AuditRepo) List(ctx context.Context, q dto.AuditLogQuery) ([]dto.AuditL
 		idx++
 	}
 
-	if q.StartDate != "" {
-		start, err := parseDateBoundary(q.StartDate, false)
-		if err != nil {
-			return nil, 0, fmt.Errorf("invalid start_date: %w", err)
-		}
-		where += fmt.Sprintf(" AND created_at >= $%d", idx)
-		args = append(args, start)
-		idx++
-	}
-	if q.EndDate != "" {
-		end, comparator, err := parseEndDateBoundary(q.EndDate)
-		if err != nil {
-			return nil, 0, fmt.Errorf("invalid end_date: %w", err)
-		}
-		where += fmt.Sprintf(" AND created_at %s $%d", comparator, idx)
-		args = append(args, end)
-		idx++
-	}
-
 	var total int64
 	if err := r.db.QueryRow(ctx, "SELECT COUNT(*) FROM audit_log "+where, args...).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count audit logs: %w", err)
@@ -142,46 +121,4 @@ func (r *AuditRepo) List(ctx context.Context, q dto.AuditLogQuery) ([]dto.AuditL
 	}
 
 	return entries, total, nil
-}
-
-func parseDateBoundary(raw string, inclusiveEnd bool) (time.Time, error) {
-	v := strings.TrimSpace(raw)
-	if v == "" {
-		return time.Time{}, fmt.Errorf("empty date")
-	}
-
-	if t, err := time.Parse("2006-01-02", v); err == nil {
-		if inclusiveEnd {
-			return t.AddDate(0, 0, 1), nil
-		}
-		return t, nil
-	}
-
-	t, err := time.Parse(time.RFC3339, v)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("expected YYYY-MM-DD or RFC3339")
-	}
-
-	if inclusiveEnd {
-		return t, nil
-	}
-	return t, nil
-}
-
-func parseEndDateBoundary(raw string) (time.Time, string, error) {
-	v := strings.TrimSpace(raw)
-	if v == "" {
-		return time.Time{}, "", fmt.Errorf("empty date")
-	}
-
-	if t, err := time.Parse("2006-01-02", v); err == nil {
-		return t.AddDate(0, 0, 1), "<", nil
-	}
-
-	t, err := time.Parse(time.RFC3339, v)
-	if err != nil {
-		return time.Time{}, "", fmt.Errorf("expected YYYY-MM-DD or RFC3339")
-	}
-
-	return t, "<=", nil
 }

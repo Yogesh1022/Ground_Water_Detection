@@ -111,4 +111,3 @@ func norm(s string) string { return strings.TrimSpace(strings.ToLower(s)) }
 func intToString(v int) string { return strconv.Itoa(v) }
 
 func int64ToString(v int64) string { return strconv.FormatInt(v, 10) }
-*** End Patch

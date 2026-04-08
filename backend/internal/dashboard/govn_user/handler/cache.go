@@ -153,4 +153,3 @@ func buildGovnCrisisCacheKey() string {
 }
 
 func norm(s string) string { return strings.TrimSpace(strings.ToLower(s)) }
-*** End Patch

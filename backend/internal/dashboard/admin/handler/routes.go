@@ -5,8 +5,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
-	"time"
 
 	"github.com/Yogesh1022/Ground_Water_Detection/backend/internal/dashboard/admin/dto"
 	"github.com/Yogesh1022/Ground_Water_Detection/backend/internal/dashboard/admin/repository"
@@ -306,14 +304,6 @@ func RegisterRoutes(rg *gin.RouterGroup, db *pgxpool.Pool, redisClient *redis.Cl
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		if !isValidDateQuery(q.StartDate) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid start_date; use YYYY-MM-DD or RFC3339"})
-			return
-		}
-		if !isValidDateQuery(q.EndDate) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid end_date; use YYYY-MM-DD or RFC3339"})
-			return
-		}
 		q.PaginationQuery.Normalize()
 
 		cacheKey := buildAuditLogCacheKey(q)
@@ -349,18 +339,6 @@ func parseIDParam(c *gin.Context) (int64, bool) {
 	}
 
 	return id, true
-}
-
-func isValidDateQuery(raw string) bool {
-	v := strings.TrimSpace(raw)
-	if v == "" {
-		return true
-	}
-	if _, err := time.Parse("2006-01-02", v); err == nil {
-		return true
-	}
-	_, err := time.Parse(time.RFC3339, v)
-	return err == nil
 }
 
 func actorContext(c *gin.Context) (int64, string, string, string) {
