@@ -15,6 +15,7 @@ func RegisterRoutes(rg *gin.RouterGroup, db *pgxpool.Pool, redisClient *redis.Cl
 	rg.GET("/wells/:id", h.getWell)
 	rg.GET("/districts/summary", h.districtSummary)
 	rg.GET("/alerts", h.listAlerts)
+	rg.GET("/groundwater-readings", h.listGroundwaterReadings)
 	rg.POST("/predict", h.predict)
 	rg.POST("/complaints", h.createComplaint)
 	rg.GET("/complaints/track/:tracking", h.trackComplaint)

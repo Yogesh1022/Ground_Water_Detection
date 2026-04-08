@@ -1,0 +1,26 @@
+*,*::before,*::after{box-sizing:border-box}
+:root{
+  --bg:#06080d;--surface:rgba(13,17,23,.9);--border:rgba(168,85,247,.2);
+  --accent:#a855f7;--accent-2:#22d3ee;--text:#e2e8f0;--dim:#64748b;
+}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 20% 20%,rgba(34,211,238,.08),transparent 40%),radial-gradient(circle at 80% 10%,rgba(168,85,247,.12),transparent 42%),#06080d;color:var(--text);font-family:'Outfit',sans-serif;overflow:hidden}
+#particles{position:fixed;inset:0;z-index:0}
+#cursorGlow{position:fixed;left:0;top:0;width:320px;height:320px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(168,85,247,.2),transparent 70%);transform:translate(-50%,-50%);z-index:1}
+.login-shell{position:relative;z-index:2;width:min(92vw,460px)}
+.back-link{display:inline-block;margin-bottom:1rem;color:var(--dim);text-decoration:none}
+.back-link:hover{color:var(--text)}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.5rem;backdrop-filter:blur(14px)}
+.brand-wrap{display:flex;gap:.9rem;align-items:center;margin-bottom:1rem}
+.brand-logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#fb7185);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff}
+h1{font-size:1.1rem;margin:0}
+p{margin:.2rem 0 0;color:var(--dim);font-size:.86rem}
+.msg{display:none;margin:.75rem 0;padding:.6rem .8rem;border-radius:10px;font-size:.85rem}
+.msg.ok{display:block;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);color:#34d399}
+.msg.err{display:block;background:rgba(251,113,133,.12);border:1px solid rgba(251,113,133,.3);color:#fb7185}
+.label{display:block;font-size:.78rem;color:var(--dim);margin:.75rem 0 .35rem;text-transform:uppercase;letter-spacing:.05em}
+.input{width:100%;padding:.72rem .9rem;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.03);color:var(--text);font-size:.92rem;outline:none}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(168,85,247,.15)}
+.btn{margin-top:1rem;width:100%;padding:.75rem;border:none;border-radius:10px;cursor:pointer;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--accent),#fb7185)}
+.btn:disabled{opacity:.65;cursor:not-allowed}
+.note{margin-top:.7rem;font-size:.72rem;color:var(--dim)}
+.mono{font-family:'JetBrains Mono',monospace}

@@ -1110,16 +1110,20 @@ export default function GovDashboardPage() {
 
   return (
     <div className="g-root">
+      {/* Off-canvas/drawer sidebar */}
       <aside className={`g-sidebar ${collapsed ? "collapsed" : ""} ${mobileOpen ? "open" : ""}`}>
         <div className="g-sidebar-header">
-          <div className="g-logo"><Landmark size={18} /></div>
-          <div className="g-brand-text">
-            <strong>AquaVidarbha</strong>
-            <span>GOV OFFICER PORTAL</span>
-          </div>
+          <div className="g-logo"><Landmark size={22} /></div>
+          {!collapsed && (
+            <div className="g-brand-text">
+              <strong>AquaVidarbha</strong>
+              <span>WATER DASHBOARD</span>
+            </div>
+          )}
         </div>
 
         <nav className="g-nav">
+<<<<<<< HEAD
           {(() => {
             const seenSections = new Set<GovNavItem["section"]>();
             return navItems.map((item) => {
@@ -1142,15 +1146,46 @@ export default function GovDashboardPage() {
           <button className="g-nav-item" onClick={() => navigate("/")} type="button">
             <Home size={16} />
             <span>Home</span>
+=======
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.key}>
+                {sectionLabel(item.section)}
+                <button
+                  className={`g-nav-item ${activePage === item.key ? "active" : ""}`}
+                  onClick={() => {
+                    setActivePage(item.key);
+                    setMobileOpen(false);
+                  }}
+                  title={item.label}
+                >
+                  <Icon size={22} />
+                  {!collapsed && <span>{item.label}</span>}
+                  {item.badge && !collapsed && <span className="g-nav-badge">{item.badge}</span>}
+                </button>
+              </div>
+            );
+          })}
+
+          <button className="g-nav-item" onClick={() => navigate("/")} title="Home">
+            <Home size={22} />
+            {!collapsed && <span>Home</span>}
+>>>>>>> main
           </button>
         </nav>
 
         <div className="g-sidebar-footer">
+<<<<<<< HEAD
           <div className="g-user-pill">
             <div>{officerName}</div>
             <div style={{ fontSize: ".68rem", color: "#64748b" }}>{officerDistrict ? `District Officer · ${officerDistrict}` : "District Officer"}</div>
           </div>
           <button className="g-btn g-btn-ghost" onClick={handleLogout} type="button"><LogOut size={14} /> Logout</button>
+=======
+          {!collapsed && <div className="g-user-pill">{officerName}</div>}
+          <button className="g-btn g-btn-ghost" onClick={logout}><LogOut size={14} /> {!collapsed && "Logout"}</button>
+>>>>>>> main
         </div>
       </aside>
 

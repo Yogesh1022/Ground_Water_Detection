@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>AquaVidarbha - Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo"><i data-lucide="settings" style="width:20px;height:20px;color:#fff"></i></div>
+      <div class="sidebar-brand"><div class="sidebar-brand-name">AquaVidarbha</div><div class="sidebar-brand-role mono">SYSTEM ADMINISTRATOR</div></div>
+    </div>
+    <nav class="sidebar-nav">
+      <span class="nav-section">Overview</span>
+      <button class="nav-item active" data-page="overview"><i data-lucide="layout-dashboard" style="width:18px;height:18px"></i><span class="nav-label">System Overview</span></button>
+      <button class="nav-item" data-page="analytics"><i data-lucide="trending-up" style="width:18px;height:18px"></i><span class="nav-label">Analytics</span></button>
+      <button class="nav-item" data-page="health"><i data-lucide="activity" style="width:18px;height:18px"></i><span class="nav-label">System Health</span></button>
+      <span class="nav-section">User Management</span>
+      <button class="nav-item" data-page="users"><i data-lucide="users" style="width:18px;height:18px"></i><span class="nav-label">Manage Citizens</span></button>
+      <button class="nav-item" data-page="officers"><i data-lucide="landmark" style="width:18px;height:18px"></i><span class="nav-label">Manage Officers</span></button>
+      <button class="nav-item" data-page="adduser"><i data-lucide="user-plus" style="width:18px;height:18px"></i><span class="nav-label">Add User / Officer</span></button>
+      <span class="nav-section">Data & ML</span>
+      <button class="nav-item" data-page="mlmodels"><i data-lucide="brain" style="width:18px;height:18px"></i><span class="nav-label">ML Model Stats</span></button>
+      <button class="nav-item" data-page="dataoverview"><i data-lucide="database" style="width:18px;height:18px"></i><span class="nav-label">Data Overview</span></button>
+      <span class="nav-section">System</span>
+      <button class="nav-item" data-page="activitylog"><i data-lucide="scroll-text" style="width:18px;height:18px"></i><span class="nav-label">Activity Logs</span></button>
+      <button class="nav-item" data-page="settings"><i data-lucide="sliders-horizontal" style="width:18px;height:18px"></i><span class="nav-label">Settings</span></button>
+      <a href="../legacy/v2/index.html" class="nav-item"><i data-lucide="home" style="width:18px;height:18px"></i><span class="nav-label">Home</span></a>
+      <a class="nav-item" style="cursor:pointer" id="logoutBtn"><i data-lucide="log-out" style="width:18px;height:18px"></i><span class="nav-label">Logout</span></a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="user-card">
+        <div class="user-avatar"><i data-lucide="shield" style="width:18px;height:18px;color:#fff"></i></div>
+        <div class="user-info"><div class="user-name" id="adminUserName">Admin</div><div class="user-role mono">SUPERADMIN · SYSTEM</div></div>
+      </div>
+    </div>
+  </aside>
+
+  <main id="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="topbar-toggle" id="toggleSidebar"><i data-lucide="panel-left" style="width:18px;height:18px"></i></button>
+        <div class="page-title" id="pageTitle"><i data-lucide="layout-dashboard" style="width:18px;height:18px"></i> System Overview</div>
+      </div>
+      <div class="topbar-right">
+        <span class="badge-role"><i data-lucide="shield" style="width:14px;height:14px"></i> SUPERADMIN</span>
+        <button class="topbar-btn" id="mobileSidebarBtn"><i data-lucide="menu" style="width:16px;height:16px"></i></button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="card notice" id="apiNotice">Sign in from login.html to connect this dashboard with live backend data.</div>
+
+      <div class="page-view active" id="page-overview">
+        <div class="kpi-row">
+          <div class="kpi"><div class="kpi-top"><div class="kpi-icon" style="background:rgba(34,211,238,.1)"><i data-lucide="users" style="width:20px;height:20px;color:var(--neon-cyan)"></i></div></div><div class="kpi-val" id="kpiTotalUsers" style="color:var(--neon-cyan)">-</div><div class="kpi-label">Total Users</div></div>
+          <div class="kpi"><div class="kpi-top"><div class="kpi-icon" style="background:rgba(168,85,247,.1)"><i data-lucide="landmark" style="width:20px;height:20px;color:var(--neon-purple)"></i></div></div><div class="kpi-val" id="kpiGovOfficers" style="color:var(--neon-purple)">-</div><div class="kpi-label">Govt Officers</div></div>
+          <div class="kpi"><div class="kpi-top"><div class="kpi-icon" style="background:rgba(59,130,246,.1)"><i data-lucide="clipboard-list" style="width:20px;height:20px;color:var(--neon-blue)"></i></div></div><div class="kpi-val" id="kpiOpenComplaints" style="color:var(--neon-blue)">-</div><div class="kpi-label">Open Complaints</div></div>
+          <div class="kpi"><div class="kpi-top"><div class="kpi-icon" style="background:rgba(251,191,36,.1)"><i data-lucide="droplets" style="width:20px;height:20px;color:var(--neon-amber)"></i></div></div><div class="kpi-val" id="kpiWells" style="color:var(--neon-amber)">-</div><div class="kpi-label">Wells Monitored</div></div>
+          <div class="kpi"><div class="kpi-top"><div class="kpi-icon" style="background:rgba(52,211,153,.1)"><i data-lucide="brain" style="width:20px;height:20px;color:var(--neon-green)"></i></div></div><div class="kpi-val" id="kpiAvgDepth" style="color:var(--neon-green)">-</div><div class="kpi-label">Avg Depth MBGL</div></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card"><div class="card-header"><div class="card-title"><span class="card-dot" style="background:var(--neon-purple)"></span> User Distribution</div></div><div class="chart-wrap"><canvas id="usageChart"></canvas></div></div>
+          <div class="card"><div class="card-header"><div class="card-title"><span class="card-dot" style="background:var(--neon-cyan)"></span> Complaints and Predictions</div></div><div class="chart-wrap"><canvas id="distVolChart"></canvas></div></div>
+        </div>
+      </div>
+
+      <div class="page-view" id="page-analytics">
+        <div class="card">
+          <div class="card-header"><div class="card-title"><i data-lucide="users" style="width:18px;height:18px;color:var(--neon-cyan)"></i> User Analytics</div></div>
+          <table class="data-table">
+            <thead><tr><th>ID</th><th>Name</th><th>Role</th><th>District</th><th>Status</th><th>Created</th></tr></thead>
+            <tbody id="analyticsUsersTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="page-view" id="page-health">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div class="card-title"><span class="card-dot" style="background:var(--neon-green)"></span> API Connectivity</div></div>
+            <div class="health-row"><span>Profile Endpoint (/me)</span><span class="mono" id="meHealth">Pending</span></div>
+            <div class="health-row"><span>Overview Endpoint</span><span class="mono" id="overviewHealth">Pending</span></div>
+            <div class="health-row"><span>Users Endpoint</span><span class="mono" id="usersHealth">Pending</span></div>
+            <div class="health-row"><span>Wells Endpoint</span><span class="mono" id="wellsHealth">Pending</span></div>
+            <div class="health-row"><span>Models Endpoint</span><span class="mono" id="modelsHealth">Pending</span></div>
+            <div class="health-row"><span>Settings Endpoint</span><span class="mono" id="settingsHealth">Pending</span></div>
+          </div>
+          <div class="card"><div class="card-header"><div class="card-title"><span class="card-dot" style="background:var(--neon-blue)"></span> Server Resource Usage</div></div><div class="chart-wrap"><canvas id="serverChart"></canvas></div></div>
+        </div>
+      </div>
+
+      <div class="page-view" id="page-users">
+        <div class="card">
+          <div class="card-header"><div class="card-title"><i data-lucide="users" style="width:18px;height:18px;color:var(--neon-cyan)"></i> Citizens</div></div>
+          <div class="toolbar">
+            <input class="form-input" id="userSearch" placeholder="Search by name/email..." />
+            <select class="form-select" id="userDistrictFilter" style="max-width:180px">
+              <option value="">All Districts</option>
+              <option value="Amravati">Amravati</option>
+              <option value="Yavatmal">Yavatmal</option>
+              <option value="Akola">Akola</option>
+              <option value="Wardha">Wardha</option>
+              <option value="Nagpur">Nagpur</option>
+            </select>
+            <select class="form-select" id="userStatusFilter" style="max-width:170px">
+              <option value="all">All Status</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+            <select class="form-select" id="userLimit" style="max-width:130px">
+              <option value="10">10 / page</option>
+              <option value="20" selected>20 / page</option>
+              <option value="50">50 / page</option>
+            </select>
+            <button class="btn btn-primary" id="refreshUsersBtn"><i data-lucide="refresh-cw" style="width:14px;height:14px"></i> Refresh</button>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>District</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="citizensTbody"></tbody>
+          </table>
+          <div class="pager-row">
+            <div class="mono" id="citizenMeta">Page 1 of 1</div>
+            <div class="pager-actions">
+              <button class="btn btn-sm btn-ghost" id="citizenPrevBtn">Previous</button>
+              <button class="btn btn-sm btn-ghost" id="citizenNextBtn">Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-view" id="page-officers">
+        <div class="card">
+          <div class="card-header"><div class="card-title"><i data-lucide="landmark" style="width:18px;height:18px;color:var(--neon-blue)"></i> Government Officers</div></div>
+          <div class="toolbar">
+            <input class="form-input" id="officerSearch" placeholder="Search officer by name/email..." />
+            <select class="form-select" id="officerDistrictFilter" style="max-width:180px">
+              <option value="">All Districts</option>
+              <option value="Amravati">Amravati</option>
+              <option value="Yavatmal">Yavatmal</option>
+              <option value="Akola">Akola</option>
+              <option value="Wardha">Wardha</option>
+              <option value="Nagpur">Nagpur</option>
+            </select>
+            <select class="form-select" id="officerStatusFilter" style="max-width:170px">
+              <option value="all">All Status</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+            <select class="form-select" id="officerLimit" style="max-width:130px">
+              <option value="10">10 / page</option>
+              <option value="20" selected>20 / page</option>
+              <option value="50">50 / page</option>
+            </select>
+            <button class="btn btn-primary" id="refreshOfficersBtn"><i data-lucide="refresh-cw" style="width:14px;height:14px"></i> Refresh</button>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>District</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="officersTbody"></tbody>
+          </table>
+          <div class="pager-row">
+            <div class="mono" id="officerMeta">Page 1 of 1</div>
+            <div class="pager-actions">
+              <button class="btn btn-sm btn-ghost" id="officerPrevBtn">Previous</button>
+              <button class="btn btn-sm btn-ghost" id="officerNextBtn">Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-view" id="page-adduser">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div class="card-title"><i data-lucide="user-plus" style="width:18px;height:18px;color:var(--accent)"></i> Add New User / Officer</div></div>
+            <form id="createUserForm">
+              <div class="form-grid">
+                <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" name="name" required /></div>
+                <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" name="email" required /></div>
+              </div>
+              <div class="form-grid">
+                <div class="form-group"><label class="form-label">Role</label><select class="form-select" name="role"><option value="citizen">Citizen</option><option value="gov">Government Officer</option><option value="admin">Admin</option></select></div>
+                <div class="form-group"><label class="form-label">District</label><input class="form-input" name="district" /></div>
+              </div>
+              <div class="form-grid">
+                <div class="form-group"><label class="form-label">Phone</label><input class="form-input" name="phone" /></div>
+                <div class="form-group"><label class="form-label">Password</label><input class="form-input" type="password" name="password" minlength="8" required /></div>
+              </div>
+              <button class="btn btn-primary" type="submit"><i data-lucide="check" style="width:16px;height:16px"></i> Create Account</button>
+            </form>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title"><span class="card-dot" style="background:var(--neon-green)"></span> Quick Well Creation</div></div>
+            <form id="createWellForm">
+              <div class="form-grid">
+                <div class="form-group"><label class="form-label">Well Name</label><input class="form-input" name="name" required /></div>
+                <div class="form-group"><label class="form-label">District</label><input class="form-input" name="district" required /></div>
+              </div>
+              <div class="form-grid">
+                <div class="form-group"><label class="form-label">Latitude</label><input class="form-input" name="latitude" type="number" step="any" required /></div>
+                <div class="form-group"><label class="form-label">Longitude</label><input class="form-input" name="longitude" type="number" step="any" required /></div>
+              </div>
+              <div class="form-grid">
+                <div class="form-group"><label class="form-label">Taluka</label><input class="form-input" name="taluka" /></div>
+                <div class="form-group"><label class="form-label">Village</label><input class="form-input" name="village" /></div>
+              </div>
+              <button class="btn btn-primary" type="submit"><i data-lucide="database" style="width:16px;height:16px"></i> Create Well</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-view" id="page-mlmodels">
+        <div class="card">
+          <div class="card-header"><div class="card-title"><i data-lucide="layers" style="width:18px;height:18px;color:var(--neon-blue)"></i> Model Registry</div></div>
+          <table class="data-table">
+            <thead><tr><th>Name</th><th>Version</th><th>Status</th><th>R2</th><th>RMSE</th><th>MAE</th><th>Trained</th></tr></thead>
+            <tbody id="modelsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="page-view" id="page-dataoverview">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div class="card-title"><i data-lucide="server" style="width:18px;height:18px;color:var(--neon-cyan)"></i> Data Sources</div></div>
+            <table class="data-table">
+              <thead><tr><th>Source</th><th>Type</th><th>Records</th><th>Frequency</th><th>Coverage</th><th>Quality</th></tr></thead>
+              <tbody id="sourcesTbody"></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title"><i data-lucide="database" style="width:18px;height:18px;color:var(--neon-amber)"></i> Wells</div></div>
+            <div class="toolbar">
+              <select class="form-select" id="wellDistrictFilter" style="max-width:180px">
+                <option value="">All Districts</option>
+                <option value="Amravati">Amravati</option>
+                <option value="Yavatmal">Yavatmal</option>
+                <option value="Akola">Akola</option>
+                <option value="Wardha">Wardha</option>
+                <option value="Nagpur">Nagpur</option>
+              </select>
+              <select class="form-select" id="wellStatusFilter" style="max-width:170px">
+                <option value="all">All Status</option>
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+              <select class="form-select" id="wellLimit" style="max-width:130px">
+                <option value="10">10 / page</option>
+                <option value="20" selected>20 / page</option>
+                <option value="50">50 / page</option>
+              </select>
+              <button class="btn btn-primary" id="refreshWellsBtn"><i data-lucide="refresh-cw" style="width:14px;height:14px"></i> Refresh</button>
+            </div>
+            <table class="data-table">
+              <thead><tr><th>ID</th><th>Name</th><th>District</th><th>Village</th><th>Status</th></tr></thead>
+              <tbody id="wellsTbody"></tbody>
+            </table>
+            <div class="pager-row">
+              <div class="mono" id="wellMeta">Page 1 of 1</div>
+              <div class="pager-actions">
+                <button class="btn btn-sm btn-ghost" id="wellPrevBtn">Previous</button>
+                <button class="btn btn-sm btn-ghost" id="wellNextBtn">Next</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-view" id="page-activitylog">
+        <div class="card">
+          <div class="card-header"><div class="card-title"><i data-lucide="scroll-text" style="width:18px;height:18px;color:var(--text-dim)"></i> Full System Activity Log</div></div>
+          <div class="toolbar">
+            <input class="form-input" id="activityActorId" type="number" min="0" placeholder="Actor ID" style="max-width:160px" />
+            <input class="form-input" id="activityAction" placeholder="Action (e.g. CREATED)" style="max-width:220px" />
+            <input class="form-input" id="activityTarget" placeholder="Target table (users, wells...)" style="max-width:220px" />
+            <input class="form-input" id="activityStartDate" type="date" title="Start date" style="max-width:170px" />
+            <input class="form-input" id="activityEndDate" type="date" title="End date" style="max-width:170px" />
+            <select class="form-select" id="activityLimit" style="max-width:130px">
+              <option value="10">10 / page</option>
+              <option value="20" selected>20 / page</option>
+              <option value="50">50 / page</option>
+            </select>
+            <button class="btn btn-primary" id="refreshActivityBtn"><i data-lucide="refresh-cw" style="width:14px;height:14px"></i> Refresh</button>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>Timestamp</th><th>Actor ID</th><th>Role</th><th>Action</th><th>Target</th><th>IP</th></tr></thead>
+            <tbody id="activityTbody"></tbody>
+          </table>
+          <div class="pager-row">
+            <div class="mono" id="activityMeta">Page 1 of 1</div>
+            <div class="pager-actions">
+              <button class="btn btn-sm btn-ghost" id="activityPrevBtn">Previous</button>
+              <button class="btn btn-sm btn-ghost" id="activityNextBtn">Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-view" id="page-settings">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div class="card-title"><i data-lucide="sliders-horizontal" style="width:18px;height:18px;color:var(--accent)"></i> Alert Thresholds</div></div>
+            <form id="settingsForm"></form>
+            <button class="btn btn-primary" id="saveSettingsBtn"><i data-lucide="save" style="width:16px;height:16px"></i> Save Settings</button>
+          </div>
+          <div class="card" id="settingsInfoCard"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
