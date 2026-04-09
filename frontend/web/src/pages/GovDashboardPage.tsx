@@ -197,12 +197,6 @@ function safeNumber(value: unknown): number {
   return 0;
 }
 
-function getRiskBadge(depth: number): string {
-  if (depth <= -68) return "g-risk-critical";
-  if (depth <= -55) return "g-risk-high";
-  return "g-risk-moderate";
-}
-
 function getStatusClass(status: string): string {
   const normalized = safeText(status).toLowerCase();
   if (normalized.includes("critical") || normalized.includes("escalat")) return "s-critical";
@@ -1123,7 +1117,6 @@ export default function GovDashboardPage() {
         </div>
 
         <nav className="g-nav">
-<<<<<<< HEAD
           {(() => {
             const seenSections = new Set<GovNavItem["section"]>();
             return navItems.map((item) => {
@@ -1146,46 +1139,15 @@ export default function GovDashboardPage() {
           <button className="g-nav-item" onClick={() => navigate("/")} type="button">
             <Home size={16} />
             <span>Home</span>
-=======
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <div key={item.key}>
-                {sectionLabel(item.section)}
-                <button
-                  className={`g-nav-item ${activePage === item.key ? "active" : ""}`}
-                  onClick={() => {
-                    setActivePage(item.key);
-                    setMobileOpen(false);
-                  }}
-                  title={item.label}
-                >
-                  <Icon size={22} />
-                  {!collapsed && <span>{item.label}</span>}
-                  {item.badge && !collapsed && <span className="g-nav-badge">{item.badge}</span>}
-                </button>
-              </div>
-            );
-          })}
-
-          <button className="g-nav-item" onClick={() => navigate("/")} title="Home">
-            <Home size={22} />
-            {!collapsed && <span>Home</span>}
->>>>>>> main
           </button>
         </nav>
 
         <div className="g-sidebar-footer">
-<<<<<<< HEAD
           <div className="g-user-pill">
             <div>{officerName}</div>
             <div style={{ fontSize: ".68rem", color: "#64748b" }}>{officerDistrict ? `District Officer · ${officerDistrict}` : "District Officer"}</div>
           </div>
           <button className="g-btn g-btn-ghost" onClick={handleLogout} type="button"><LogOut size={14} /> Logout</button>
-=======
-          {!collapsed && <div className="g-user-pill">{officerName}</div>}
-          <button className="g-btn g-btn-ghost" onClick={logout}><LogOut size={14} /> {!collapsed && "Logout"}</button>
->>>>>>> main
         </div>
       </aside>
 
