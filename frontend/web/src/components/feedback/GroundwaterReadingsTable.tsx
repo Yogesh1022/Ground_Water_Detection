@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import type { ChangeEvent } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -9,21 +9,25 @@ import {
   AlertCircle,
   Loader,
 } from "lucide-react";
-import { useGroundwaterReadings } from "../hooks/useGroundwaterReadings";
-import { listAllDistricts } from "../services/api/groundwater";
+import { useGroundwaterReadings } from "../../hooks/useGroundwaterReadings";
 
 type SortField = "reading_date" | "well_id" | "depth_mbgl" | "rainfall_mm";
 
-export function GroundwaterReadingsTable() {
-  const [districts, setDistricts] = useState<string[]>([]);
-  const [selectedDistrict, setSelectedDistrict] = useState<string>("");
-  const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
-    start: "",
-    end: "",
-  });
-  const [sortField, setSortField] = useState<SortField>("reading_date");
-  const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("DESC");
+const DISTRICTS = [
+  "Akola",
+  "Amravati",
+  "Bhandara",
+  "Buldhana",
+  "Chandrapur",
+  "Gadchiroli",
+  "Gondia",
+  "Nagpur",
+  "Wardha",
+  "Washim",
+  "Yavatmal",
+];
 
+export function GroundwaterReadingsTable() {
   const {
     readings,
     loading,
@@ -32,53 +36,49 @@ export function GroundwaterReadingsTable() {
     totalPages,
     currentPage,
     pageSize,
+    filters,
     setFilters,
     setPage,
     setPageSize,
     refetch,
-  } = useGroundwaterReadings({
-    district: selectedDistrict,
-    start_date: dateRange.start,
-    end_date: dateRange.end,
-    sort_by: sortField,
-    sort_order: sortOrder,
-  });
+  } = useGroundwaterReadings({ sort_by: "reading_date", sort_order: "DESC" });
 
-  // Load districts on mount
-  React.useEffect(() => {
-    listAllDistricts().then(setDistricts);
-  }, []);
+  const districts = DISTRICTS;
 
-  const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedDistrict(e.target.value);
+  const handleDistrictChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    setFilters({ district: event.target.value });
   };
 
   const handleDateChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
+    event: ChangeEvent<HTMLInputElement>,
     type: "start" | "end"
   ) => {
-    setDateRange((prev) => ({
-      ...prev,
-      [type]: e.target.value,
-    }));
+    if (type === "start") {
+      setFilters({ start_date: event.target.value });
+      return;
+    }
+
+    setFilters({ end_date: event.target.value });
   };
 
   const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === "ASC" ? "DESC" : "ASC");
+    if (filters.sort_by === field) {
+      setFilters({
+        sort_by: field,
+        sort_order: filters.sort_order === "ASC" ? "DESC" : "ASC",
+      });
     } else {
-      setSortField(field);
-      setSortOrder("DESC");
+      setFilters({ sort_by: field, sort_order: "DESC" });
     }
   };
 
-  const handlePageSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handlePageSizeChange = (e: ChangeEvent<HTMLSelectElement>) => {
     setPageSize(parseInt(e.target.value));
   };
 
   const renderSortIcon = (field: SortField) => {
-    if (sortField !== field) return null;
-    return sortOrder === "DESC" ? (
+    if (filters.sort_by !== field) return null;
+    return filters.sort_order === "DESC" ? (
       <ChevronDown className="w-4 h-4 ml-1 inline" />
     ) : (
       <ChevronUp className="w-4 h-4 ml-1 inline" />
@@ -110,7 +110,7 @@ export function GroundwaterReadingsTable() {
               District
             </label>
             <select
-              value={selectedDistrict}
+              value={filters.district || ""}
               onChange={handleDistrictChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
@@ -130,7 +130,7 @@ export function GroundwaterReadingsTable() {
             </label>
             <input
               type="date"
-              value={dateRange.start}
+              value={filters.start_date || ""}
               onChange={(e) => handleDateChange(e, "start")}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -143,7 +143,7 @@ export function GroundwaterReadingsTable() {
             </label>
             <input
               type="date"
-              value={dateRange.end}
+              value={filters.end_date || ""}
               onChange={(e) => handleDateChange(e, "end")}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />

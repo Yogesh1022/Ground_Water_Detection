@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   BellRing,
@@ -10,13 +10,14 @@ import {
 } from "lucide-react";
 import Sidebar from "../features/dashboard-user/components/Sidebar";
 import Topbar from "../features/dashboard-user/components/Topbar";
-import HomePage from "../features/dashboard-user/pages/HomePage";
-import DetectPage from "../features/dashboard-user/pages/DetectPage";
-import MapPage from "../features/dashboard-user/pages/MapPage";
-import ComplaintPage from "../features/dashboard-user/pages/ComplaintPage";
-import TrackPage from "../features/dashboard-user/pages/TrackPage";
-import AlertsPage from "../features/dashboard-user/pages/AlertsPage";
-import NotFoundPage from "../pages/NotFoundPage";
+
+const HomePage = lazy(() => import("../features/dashboard-user/pages/HomePage"));
+const DetectPage = lazy(() => import("../features/dashboard-user/pages/DetectPage"));
+const MapPage = lazy(() => import("../features/dashboard-user/pages/MapPage"));
+const ComplaintPage = lazy(() => import("../features/dashboard-user/pages/ComplaintPage"));
+const TrackPage = lazy(() => import("../features/dashboard-user/pages/TrackPage"));
+const AlertsPage = lazy(() => import("../features/dashboard-user/pages/AlertsPage"));
+const NotFoundPage = lazy(() => import("../pages/NotFoundPage"));
 
 const pageInfo = {
   home: { title: "Home", icon: Home },
@@ -98,7 +99,15 @@ function App() {
         />
 
         <div className="content">
-          {renderPage()}
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-[40vh] text-slate-300">
+                Loading dashboard...
+              </div>
+            }
+          >
+            {renderPage()}
+          </Suspense>
         </div>
       </main>
     </div>
