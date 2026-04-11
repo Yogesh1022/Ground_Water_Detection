@@ -120,9 +120,11 @@ func (r *TaskRepo) CountPending(ctx context.Context, district string) (int64, er
 // ListByDistrict returns paged tasks for officers in a district.
 func (r *TaskRepo) ListByDistrict(ctx context.Context, district string, q dto.PaginationQuery) ([]dto.TaskResponse, int64, error) {
 	var total int64
-	r.db.QueryRow(ctx,
+	if err := r.db.QueryRow(ctx,
 		`SELECT COUNT(*) FROM task_assignments ta JOIN users u ON u.id = ta.assignee_officer_id WHERE u.district = $1`, district,
-	).Scan(&total)
+	).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count tasks: %w", err)
+	}
 
 	rows, err := r.db.Query(ctx,
 		`SELECT ta.id, ta.complaint_id, ta.assignee_officer_id, u.name, ta.priority::text, ta.status::text,
@@ -139,11 +141,13 @@ func (r *TaskRepo) ListByDistrict(ctx context.Context, district string, q dto.Pa
 	}
 	defer rows.Close()
 
-	var tasks []dto.TaskResponse
+	tasks := make([]dto.TaskResponse, 0)
 	for rows.Next() {
 		var t dto.TaskResponse
-		rows.Scan(&t.ID, &t.ComplaintID, &t.AssigneeOfficerID, &t.AssigneeName,
-			&t.Priority, &t.Status, &t.Notes, &t.DueDate, &t.CreatedAt)
+		if err := rows.Scan(&t.ID, &t.ComplaintID, &t.AssigneeOfficerID, &t.AssigneeName,
+			&t.Priority, &t.Status, &t.Notes, &t.DueDate, &t.CreatedAt); err != nil {
+			return nil, 0, fmt.Errorf("scan task row: %w", err)
+		}
 		tasks = append(tasks, t)
 	}
 	return tasks, total, rows.Err()

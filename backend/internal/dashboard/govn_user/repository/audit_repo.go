@@ -63,7 +63,9 @@ func (r *AuditRepo) ListByDistrict(ctx context.Context, district string, q dto.A
 	}
 
 	var total int64
-	r.db.QueryRow(ctx, "SELECT COUNT(*) FROM audit_log al LEFT JOIN users u ON u.id = al.actor_id "+where, args...).Scan(&total)
+	if err := r.db.QueryRow(ctx, "SELECT COUNT(*) FROM audit_log al LEFT JOIN users u ON u.id = al.actor_id "+where, args...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count activity: %w", err)
+	}
 
 	args = append(args, q.Limit, q.Offset())
 	rows, err := r.db.Query(ctx,
@@ -81,12 +83,16 @@ func (r *AuditRepo) ListByDistrict(ctx context.Context, district string, q dto.A
 	}
 	defer rows.Close()
 
-	var entries []dto.ActivityEntry
+	entries := make([]dto.ActivityEntry, 0)
 	for rows.Next() {
 		var e dto.ActivityEntry
 		var detailsRaw []byte
-		rows.Scan(&e.ID, &e.ActorID, &e.ActorRole, &e.Action, &e.TargetTable, &e.TargetID, &detailsRaw, &e.CreatedAt)
-		json.Unmarshal(detailsRaw, &e.Details)
+		if err := rows.Scan(&e.ID, &e.ActorID, &e.ActorRole, &e.Action, &e.TargetTable, &e.TargetID, &detailsRaw, &e.CreatedAt); err != nil {
+			return nil, 0, fmt.Errorf("scan activity row: %w", err)
+		}
+		if err := json.Unmarshal(detailsRaw, &e.Details); err != nil {
+			e.Details = map[string]interface{}{}
+		}
 		entries = append(entries, e)
 	}
 	return entries, total, rows.Err()

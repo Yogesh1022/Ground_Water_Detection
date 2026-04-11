@@ -1,7 +1,6 @@
 import { ClipboardList, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { trackComplaint } from "../api/commonUserApi";
-import { complaintRows } from "../api/dashboardData";
 
 function TrackPage() {
   const [trackingInput, setTrackingInput] = useState("");
@@ -10,7 +9,7 @@ function TrackPage() {
   const [tracked, setTracked] = useState(null);
 
   const rows = useMemo(() => {
-    if (!tracked) return complaintRows;
+    if (!tracked) return [];
 
     const status = normalizeStatusClass(tracked.status);
     const trackedRow = {
@@ -23,7 +22,7 @@ function TrackPage() {
       cls: status
     };
 
-    return [trackedRow, ...complaintRows.filter((r) => r.id !== tracked.tracking_number)];
+    return [trackedRow];
   }, [tracked]);
 
   const onSearch = async () => {
@@ -96,6 +95,11 @@ function TrackPage() {
                 <td>{row.note}</td>
               </tr>
             ))}
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="muted">Search with a tracking number to fetch live complaint status.</td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>

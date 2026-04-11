@@ -120,14 +120,6 @@ const chartOptions = {
   }
 };
 
-const legacyDistrictRows = [
-  { district: "Amravati", citizens: 421, officers: 5, reports: 68, resolved: "95.2%", alerts: 3, response: "14.2h" },
-  { district: "Yavatmal", citizens: 388, officers: 4, reports: 84, resolved: "88.1%", alerts: 5, response: "22.8h" },
-  { district: "Akola", citizens: 312, officers: 3, reports: 45, resolved: "96.0%", alerts: 2, response: "16.5h" },
-  { district: "Wardha", citizens: 278, officers: 3, reports: 32, resolved: "97.8%", alerts: 1, response: "11.0h" },
-  { district: "Nagpur", citizens: 495, officers: 5, reports: 28, resolved: "98.5%", alerts: 0, response: "9.4h" }
-];
-
 const defaultOverview: AdminOverviewResponse = {
   total_users: 0,
   active_citizens: 0,
@@ -237,50 +229,118 @@ export default function AdminDashboardFeaturePage() {
   const [wellForm, setWellForm] = useState<CreateWellPayload>(emptyWellForm);
   const [adminName, setAdminName] = useState(sessionStorage.getItem("aqua_user") || "System Administrator");
 
+  const districtKpiRows = useMemo(() => {
+    const grouped = wells.reduce<Record<string, { total: number; active: number; latest?: string }>>((acc, well) => {
+      const key = well.district || "Unknown";
+      if (!acc[key]) {
+        acc[key] = { total: 0, active: 0, latest: undefined };
+      }
+      acc[key].total += 1;
+      if (well.is_active) {
+        acc[key].active += 1;
+      }
+      if (well.created_at && (!acc[key].latest || new Date(well.created_at) > new Date(acc[key].latest || 0))) {
+        acc[key].latest = well.created_at;
+      }
+      return acc;
+    }, {});
+
+    return Object.entries(grouped)
+      .map(([district, value]) => ({ district, ...value }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 12);
+  }, [wells]);
+
+  const activitySummary = useMemo(() => {
+    const now = new Date();
+    const buckets = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(now);
+      d.setDate(now.getDate() - (6 - i));
+      const key = d.toISOString().slice(0, 10);
+      return { key, label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }), total: 0, user: 0, resolved: 0, complaints: 0 };
+    });
+
+    const map = new Map(buckets.map((b) => [b.key, b]));
+    for (const entry of activityLog) {
+      const key = String(entry.created_at || "").slice(0, 10);
+      const bucket = map.get(key);
+      if (!bucket) continue;
+      bucket.total += 1;
+
+      const action = String(entry.action || "").toLowerCase();
+      if (action.includes("user")) bucket.user += 1;
+      if (action.includes("resolve") || action.includes("resolved") || action.includes("close")) bucket.resolved += 1;
+      if (action.includes("complaint")) bucket.complaints += 1;
+    }
+
+    return buckets;
+  }, [activityLog]);
+
+  const resolvedRate = useMemo(() => {
+    const totalComplaints = activitySummary.reduce((sum, b) => sum + b.complaints, 0);
+    const resolved = activitySummary.reduce((sum, b) => sum + b.resolved, 0);
+    if (totalComplaints === 0) return 0;
+    return Math.min(100, Math.round((resolved / totalComplaints) * 1000) / 10);
+  }, [activitySummary]);
+
+  const last24hActions = useMemo(() => {
+    const since = Date.now() - 24 * 60 * 60 * 1000;
+    return activityLog.filter((entry) => new Date(entry.created_at).getTime() >= since).length;
+  }, [activityLog]);
+
+  const avgDataQuality = useMemo(() => {
+    if (dataSources.length === 0) return 0;
+    const total = dataSources.reduce((sum, src) => sum + Number(src.quality_score || 0), 0);
+    return Math.round((total / dataSources.length) * 10) / 10;
+  }, [dataSources]);
+
   const usageData = useMemo(
     () => ({
-      labels: ["Feb 10", "Feb 15", "Feb 20", "Feb 25", "Mar 1", "Mar 5", "Mar 10"],
+      labels: activitySummary.map((item) => item.label),
       datasets: [
         {
-          label: "Citizens",
-          data: [210, 245, 230, 268, 290, 315, 341],
+          label: "Admin Actions",
+          data: activitySummary.map((item) => item.total),
           borderColor: "#22d3ee",
           backgroundColor: "rgba(34,211,238,.07)",
           tension: 0.4,
           fill: true
         },
         {
-          label: "Officers",
-          data: [28, 30, 29, 31, 31, 33, 34],
+          label: "User-related Actions",
+          data: activitySummary.map((item) => item.user),
           borderColor: "#a855f7",
           tension: 0.4
         }
       ]
     }),
-    []
+    [activitySummary]
   );
 
   const districtVolumeData = useMemo(
     () => ({
-      labels: ["Amravati", "Yavatmal", "Akola", "Buldhana", "Washim", "Wardha", "Nagpur"],
+      labels: districtKpiRows.map((row) => row.district),
       datasets: [
         {
-          data: [68, 84, 45, 52, 31, 32, 28],
-          backgroundColor: ["#fb7185", "#fb7185", "#fbbf24", "#fbbf24", "#fbbf24", "#22d3ee", "#34d399"],
+          data: districtKpiRows.map((row) => row.total),
+          backgroundColor: districtKpiRows.map((row) => (row.active === row.total ? "#34d399" : row.active > 0 ? "#22d3ee" : "#fb7185")),
           borderRadius: 8
         }
       ]
     }),
-    []
+    [districtKpiRows]
   );
 
   const trendData = useMemo(
     () => ({
-      labels: ["Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"],
+      labels: activitySummary.map((item) => item.label),
       datasets: [
         {
-          label: "Resolution %",
-          data: [88, 91, 90, 93, 94, 94.2, 95],
+          label: "Resolved/Complaint Actions %",
+          data: activitySummary.map((item) => {
+            if (item.complaints === 0) return 0;
+            return Math.round((item.resolved / item.complaints) * 1000) / 10;
+          }),
           borderColor: "#34d399",
           backgroundColor: "rgba(52,211,153,.08)",
           fill: true,
@@ -288,54 +348,66 @@ export default function AdminDashboardFeaturePage() {
         }
       ]
     }),
-    []
+    [activitySummary]
   );
 
   const registrationData = useMemo(
     () => ({
-      labels: ["Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"],
+      labels: activitySummary.map((item) => item.label),
       datasets: [
         {
-          label: "New Registrations",
-          data: [88, 122, 145, 210, 312, 388, 421],
+          label: "User Create Actions",
+          data: activitySummary.map((item) => item.user),
           backgroundColor: "rgba(168,85,247,.6)",
           borderRadius: 6
         }
       ]
     }),
-    []
+    [activitySummary]
   );
 
   const serverResourceData = useMemo(
     () => ({
-      labels: ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "Now"],
+      labels: dataSources.map((item) => item.source_name),
       datasets: [
         {
-          label: "CPU %",
-          data: [12, 8, 22, 45, 62, 58, 48],
+          label: "Data Quality Score",
+          data: dataSources.map((item) => Number(item.quality_score || 0)),
           borderColor: "#a855f7",
           tension: 0.4,
           pointRadius: 2
         },
         {
-          label: "Memory %",
-          data: [55, 54, 60, 68, 72, 70, 65],
+          label: "Record Count (scaled)",
+          data: dataSources.map((item) => Math.min(100, Math.round(Number(item.record_count || 0) / 1000))),
           borderColor: "#22d3ee",
           tension: 0.4,
           pointRadius: 2
         }
       ]
     }),
-    []
+    [dataSources]
   );
 
   const modelTrendData = useMemo(
     () => ({
-      labels: ["Run 1", "Run 2", "Run 3", "Run 4", "Run 5", "Run 6", "Run 7"],
+      labels:
+        models.length > 0
+          ? models
+              .slice()
+              .sort((a, b) => new Date(a.trained_at || 0).getTime() - new Date(b.trained_at || 0).getTime())
+              .map((m) => (m.version ? `${m.model_name} ${m.version}` : m.model_name))
+          : ["No Data"],
       datasets: [
         {
           label: "Best R²",
-          data: [0.801, 0.833, 0.851, 0.867, 0.874, 0.882, 0.889],
+          data:
+            models.length > 0
+              ? models
+                  .slice()
+                  .sort((a, b) => new Date(a.trained_at || 0).getTime() - new Date(b.trained_at || 0).getTime())
+                  .map((m) => Number(m.r2_score || 0))
+              : [0],
           borderColor: "#a855f7",
           backgroundColor: "rgba(168,85,247,.08)",
           fill: true,
@@ -344,16 +416,16 @@ export default function AdminDashboardFeaturePage() {
         }
       ]
     }),
-    []
+    [models]
   );
 
   const modelCompareData = useMemo(
     () => ({
-      labels: models.length > 0 ? models.map((item) => item.model_name) : ["XGBoost", "LSTM", "Random Forest", "1D-CNN"],
+      labels: models.length > 0 ? models.map((item) => item.model_name) : ["No Models"],
       datasets: [
         {
           label: "R² Score",
-          data: models.length > 0 ? models.map((item) => item.r2_score) : [0.889, 0.901, 0.874, 0.852],
+          data: models.length > 0 ? models.map((item) => Number(item.r2_score || 0)) : [0],
           backgroundColor: ["rgba(52,211,153,.6)", "rgba(168,85,247,.6)", "rgba(34,211,238,.6)", "rgba(251,191,36,.6)"],
           borderRadius: 8
         }
@@ -692,11 +764,11 @@ export default function AdminDashboardFeaturePage() {
         </div>
         <div className="adm-grid-2">
           <section className="adm-card">
-            <div className="adm-card-head"><TrendingUp size={16} className="adm-head-icon tone-purple" /> Platform Usage (Last 30 Days)</div>
+            <div className="adm-card-head"><TrendingUp size={16} className="adm-head-icon tone-purple" /> Platform Activity (Last 7 Days)</div>
             <div className="adm-chart-wrap"><Line data={usageData} options={chartOptions} /></div>
           </section>
           <section className="adm-card">
-            <div className="adm-card-head"><Database size={16} className="adm-head-icon tone-cyan" /> Request Volume by District</div>
+            <div className="adm-card-head"><Database size={16} className="adm-head-icon tone-cyan" /> Well Coverage by District</div>
             <div className="adm-chart-wrap"><Bar data={districtVolumeData} options={chartOptions} /></div>
           </section>
         </div>
@@ -707,9 +779,9 @@ export default function AdminDashboardFeaturePage() {
             <div className="adm-stat-sub">{overview.open_complaints} open complaints under monitoring</div>
           </section>
           <section className="adm-card adm-stat-card">
-            <div className="adm-stat-value tone-green">94.2%</div>
-            <div className="adm-stat-title">Request Resolution Rate</div>
-            <div className="adm-stat-sub adm-mono">Average response: 18.4 hours</div>
+            <div className="adm-stat-value tone-green">{resolvedRate.toFixed(1)}%</div>
+            <div className="adm-stat-title">Resolved Action Rate</div>
+            <div className="adm-stat-sub adm-mono">Computed from audit activity</div>
           </section>
           <section className="adm-card adm-stat-card">
             <div className="adm-stat-value tone-purple">ONLINE</div>
@@ -1119,40 +1191,41 @@ export default function AdminDashboardFeaturePage() {
           <>
             <div className="adm-grid-2">
               <section className="adm-card">
-                <div className="adm-card-head"><User size={16} className="adm-head-icon tone-blue" /> New Registrations (Monthly)</div>
+                <div className="adm-card-head"><User size={16} className="adm-head-icon tone-blue" /> User-related Actions (Last 7 Days)</div>
                 <div className="adm-chart-wrap"><Bar data={registrationData} options={chartOptions} /></div>
               </section>
               <section className="adm-card">
-                <div className="adm-card-head"><Activity size={16} className="adm-head-icon tone-green" /> Report Resolution Trend</div>
+                <div className="adm-card-head"><Activity size={16} className="adm-head-icon tone-green" /> Complaint Resolution Trend</div>
                 <div className="adm-chart-wrap"><Line data={trendData} options={chartOptions} /></div>
               </section>
             </div>
             <section className="adm-card">
-              <div className="adm-card-head"><LayoutDashboard size={16} className="adm-head-icon tone-amber" /> District-Level KPIs</div>
+              <div className="adm-card-head"><LayoutDashboard size={16} className="adm-head-icon tone-amber" /> District Well KPIs</div>
               <table className="adm-table">
                 <thead>
                   <tr>
                     <th>District</th>
-                    <th>Citizens</th>
-                    <th>Officers</th>
-                    <th>Reports</th>
-                    <th>Resolved %</th>
-                    <th>Active Alerts</th>
-                    <th>Avg Response</th>
+                    <th>Total Wells</th>
+                    <th>Active Wells</th>
+                    <th>Active %</th>
+                    <th>Last Well Added</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {legacyDistrictRows.map((row) => (
+                  {districtKpiRows.map((row) => (
                     <tr key={row.district}>
                       <td>{row.district}</td>
-                      <td>{row.citizens}</td>
-                      <td>{row.officers}</td>
-                      <td>{row.reports}</td>
-                      <td>{row.resolved}</td>
-                      <td>{row.alerts}</td>
-                      <td>{row.response}</td>
+                      <td>{row.total}</td>
+                      <td>{row.active}</td>
+                      <td>{row.total > 0 ? `${Math.round((row.active / row.total) * 100)}%` : "0%"}</td>
+                      <td>{row.latest ? new Date(row.latest).toLocaleDateString() : "-"}</td>
                     </tr>
                   ))}
+                  {districtKpiRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={5}>No district well data available.</td>
+                    </tr>
+                  ) : null}
                 </tbody>
               </table>
             </section>
@@ -1172,12 +1245,12 @@ export default function AdminDashboardFeaturePage() {
                 <div className="adm-health-row"><span>Data Source API</span><span className={sourcesError ? "tone-amber" : "tone-green"}>{sourcesError ? "DEGRADED" : "ACTIVE"}</span></div>
               </section>
               <section className="adm-card">
-                <div className="adm-card-head"><Database size={16} className="adm-head-icon tone-blue" /> Server Resource Usage</div>
+                <div className="adm-card-head"><Database size={16} className="adm-head-icon tone-blue" /> Data Source Quality</div>
                 <div className="adm-chart-wrap"><Line data={serverResourceData} options={chartOptions} /></div>
               </section>
             </div>
             <div className="adm-kpi-row">
-              <article className="adm-kpi"><div className="adm-kpi-value adm-mono tone-green">42ms</div><div className="adm-kpi-label">API Latency (P95)</div></article>
+              <article className="adm-kpi"><div className="adm-kpi-value adm-mono tone-green">{last24hActions}</div><div className="adm-kpi-label">Actions (Last 24h)</div></article>
               <article className="adm-kpi"><div className="adm-kpi-value adm-mono tone-cyan">{overview.total_predictions}</div><div className="adm-kpi-label">Total Predictions</div></article>
               <article className="adm-kpi"><div className="adm-kpi-value adm-mono tone-purple">{dataSources[0]?.last_synced_at ? new Date(dataSources[0].last_synced_at).toLocaleDateString() : "N/A"}</div><div className="adm-kpi-label">Last Data Sync</div></article>
             </div>
@@ -1238,7 +1311,7 @@ export default function AdminDashboardFeaturePage() {
           <>
             <div className="adm-grid-3">
               <article className="adm-kpi"><div className="adm-kpi-value tone-cyan">{dataSources.reduce((sum, src) => sum + Number(src.record_count || 0), 0)}</div><div className="adm-kpi-label">Total Records</div></article>
-              <article className="adm-kpi"><div className="adm-kpi-value tone-blue">2010-2025</div><div className="adm-kpi-label">Data Coverage</div></article>
+              <article className="adm-kpi"><div className="adm-kpi-value tone-blue">{avgDataQuality.toFixed(1)}%</div><div className="adm-kpi-label">Avg Data Quality</div></article>
               <article className="adm-kpi"><div className="adm-kpi-value tone-green">{overview.total_wells}</div><div className="adm-kpi-label">Well Stations</div></article>
             </div>
             <section className="adm-card">

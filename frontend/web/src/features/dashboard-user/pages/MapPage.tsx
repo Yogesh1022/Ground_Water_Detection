@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CircleMarker, MapContainer, Popup, TileLayer, ZoomControl } from "react-leaflet";
 import { MapPin } from "lucide-react";
-import { getWells } from "../api/commonUserApi";
-import { wells } from "../api/dashboardData";
+import { getGroundwaterReadings } from "../api/commonUserApi";
 
 function depthStyle(depth) {
   if (depth > 60) return { color: "#fb7185", risk: "DANGER", radius: 10 + (depth - 60) / 3 };
@@ -12,30 +11,30 @@ function depthStyle(depth) {
 }
 
 function MapPage() {
-  const [wellsState, setWellsState] = useState(wells);
+  const [wellsState, setWellsState] = useState([]);
 
   useEffect(() => {
     let active = true;
 
     async function loadWells() {
       try {
-        const response = await getWells({ page: 1, limit: 100 });
+        const response = await getGroundwaterReadings({ page: 1, limit: 100, sort_by: "reading_date", sort_order: "DESC" });
         const rows = Array.isArray(response?.data) ? response.data : [];
-        if (!active || rows.length === 0) return;
+        if (!active) return;
 
         const mapped = rows.map((w) => ({
-          n: w.name,
-          lt: Number(w.latitude),
-          ln: Number(w.longitude),
-          d: Number(w.depth_total_m || 0),
+          n: w.well_name,
+          lt: Number(w.latitude || 0),
+          ln: Number(w.longitude || 0),
+          d: Number(w.depth_mbgl || 0),
           p: "Apr: N/A\nMay: N/A",
-          fam: Number(w.affected_families || 0),
-          t: `${w.district}${w.taluka ? `, ${w.taluka}` : ""}`
-        }));
+          fam: 0,
+          t: `${w.district || "Unknown"}`
+        })).filter((w) => Number.isFinite(w.lt) && Number.isFinite(w.ln) && (w.lt !== 0 || w.ln !== 0));
 
         setWellsState(mapped);
       } catch {
-        // Keep local map fallback if backend is unavailable.
+        setWellsState([]);
       }
     }
 
@@ -98,6 +97,8 @@ function MapPage() {
               </Popup>
             </CircleMarker>
           ))}
+
+          {prepared.length === 0 ? null : null}
         </MapContainer>
 
         <div className="map-legend">
