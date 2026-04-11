@@ -16,5 +16,9 @@ func NewAlertService(repo *repository.AlertRepo) *AlertService {
 }
 
 func (s *AlertService) ListActive(ctx context.Context, q dto.AlertQuery) ([]dto.AlertResponse, error) {
+	if err := s.repo.RefreshRiskAlerts(ctx); err != nil {
+		return nil, err
+	}
+
 	return s.repo.GetActive(ctx, q)
 }

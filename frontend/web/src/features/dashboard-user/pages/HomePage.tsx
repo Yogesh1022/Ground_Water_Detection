@@ -1,9 +1,30 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, AlertTriangle, BellRing, Droplets, Map, MapPin, MessageSquarePlus, Search, Waves } from "lucide-react";
 import { getAlerts, getDistrictSummary } from "../api/commonUserApi";
-import { districtRows as districtRowsMock, latestAlerts as latestAlertsMock } from "../api/dashboardData";
 
-function statusBadge(status) {
+type HomeTrend = "down" | "up" | "stable" | "flat";
+type HomeStatus = "danger" | "warning" | "ok" | "safe";
+type HomeAlertTone = "critical" | "warn" | "info";
+
+type HomeAlert = {
+  tone: HomeAlertTone;
+  title: string;
+  text: string;
+  time: string;
+};
+
+type HomeDistrictRow = {
+  district: string;
+  depth: number;
+  trend: HomeTrend;
+  status: HomeStatus;
+};
+
+type HomePageProps = {
+  onNavigate: (page: "home" | "detect" | "map" | "complaint" | "track" | "alerts") => void;
+};
+
+function statusBadge(status: HomeStatus): string {
   const map = {
     danger: "s-danger",
     warning: "s-warn",
@@ -13,7 +34,7 @@ function statusBadge(status) {
   return map[status] || "s-info";
 }
 
-function trendLabel(trend) {
+function trendLabel(trend: HomeTrend): { text: string; arrow: string; cls: string } {
   if (trend === "down") return { text: "Down", arrow: "v", cls: "trend-down" };
   if (trend === "up") return { text: "Up", arrow: "^", cls: "trend-up" };
   if (trend === "stable") return { text: "Stable", arrow: "-", cls: "trend-stable" };
@@ -32,9 +53,9 @@ const alertToneIconClass = {
   info: "var(--neon-cyan)"
 };
 
-function HomePage({ onNavigate }) {
-  const [districtRows, setDistrictRows] = useState(districtRowsMock);
-  const [latestAlerts, setLatestAlerts] = useState(latestAlertsMock);
+function HomePage({ onNavigate }: HomePageProps) {
+  const [districtRows, setDistrictRows] = useState<HomeDistrictRow[]>([]);
+  const [latestAlerts, setLatestAlerts] = useState<HomeAlert[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -53,13 +74,11 @@ function HomePage({ onNavigate }) {
               tone: toAlertTone(a.type),
               title: a.title,
               text: a.message,
-              time: new Date(a.created_at).toLocaleString()
+              time: new Date(a.created_at || Date.now()).toLocaleString()
             }))
           : [];
 
-        if (apiAlerts.length > 0) {
-          setLatestAlerts(apiAlerts);
-        }
+        setLatestAlerts(apiAlerts);
 
         const apiDistricts = Array.isArray(districtResp?.data)
           ? districtResp.data.slice(0, 8).map((d) => ({
@@ -70,11 +89,10 @@ function HomePage({ onNavigate }) {
             }))
           : [];
 
-        if (apiDistricts.length > 0) {
-          setDistrictRows(apiDistricts);
-        }
+        setDistrictRows(apiDistricts);
       } catch {
-        // Keep mock data as fallback if backend is unavailable.
+        setLatestAlerts([]);
+        setDistrictRows([]);
       }
     }
 
@@ -85,6 +103,10 @@ function HomePage({ onNavigate }) {
   }, []);
 
   const alertCount = useMemo(() => latestAlerts.length, [latestAlerts]);
+  const primaryDistrict = districtRows[0] || null;
+  const primaryDepth = primaryDistrict ? `${primaryDistrict.depth.toFixed(1)}m` : "N/A";
+  const primaryDistrictName = primaryDistrict?.district || "No district data";
+  const primaryRisk = primaryDistrict ? statusBadge(primaryDistrict.status).replace("s-", "").toUpperCase() : "UNKNOWN";
 
   return (
     <div className="page-view active">
@@ -93,7 +115,7 @@ function HomePage({ onNavigate }) {
           <div className="stat-icon stat-icon-cyan">
             <Waves size={24} />
           </div>
-          <div className="stat-val txt-cyan">-63m</div>
+          <div className="stat-val txt-cyan">{primaryDepth}</div>
           <div className="stat-label">Water Level Now</div>
         </div>
         <div className="stat-card" onClick={() => onNavigate("alerts")}>
@@ -123,12 +145,12 @@ function HomePage({ onNavigate }) {
         <div className="card">
           <div className="water-meter">
             <div className="meter-ring meter-ring-warn">
-              <div className="meter-depth txt-amber">-63.4</div>
+              <div className="meter-depth txt-amber">{primaryDepth}</div>
               <div className="meter-unit">meters deep</div>
             </div>
-            <div className="meter-label">Your Area: Amravati</div>
-            <div className="meter-sublabel txt-amber">WARNING ZONE</div>
-            <div className="meter-caption">Water is going down. Store water for 30+ days. Government tanker comes weekly.</div>
+            <div className="meter-label">Top District: {primaryDistrictName}</div>
+            <div className="meter-sublabel txt-amber">{primaryRisk} ZONE</div>
+            <div className="meter-caption">Live value from district summary endpoint.</div>
           </div>
         </div>
 
@@ -139,7 +161,19 @@ function HomePage({ onNavigate }) {
             </div>
           </div>
 
-          {latestAlerts.map((alert) => {
+          {latestAlerts.length === 0 ? (
+            <div className="alert-box alert-info">
+              <div className="alert-icon">
+                <Droplets size={22} color={alertToneIconClass.info} />
+              </div>
+              <div>
+                <div className="alert-title" style={{ color: alertToneIconClass.info }}>
+                  No active alerts
+                </div>
+                Live backend returned no active alerts for now.
+              </div>
+            </div>
+          ) : latestAlerts.map((alert) => {
             const Icon = alertIcons[alert.tone];
             return (
               <div key={alert.title} className={`alert-box alert-${alert.tone}`}>
@@ -194,6 +228,11 @@ function HomePage({ onNavigate }) {
                 </tr>
               );
             })}
+            {districtRows.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="muted">No district summary available from backend.</td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>
@@ -203,20 +242,20 @@ function HomePage({ onNavigate }) {
 
 export default HomePage;
 
-function toAlertTone(type) {
+function toAlertTone(type?: string): HomeAlertTone {
   const t = String(type || "").toLowerCase();
   if (t.includes("danger") || t.includes("critical")) return "critical";
   if (t.includes("warn")) return "warn";
   return "info";
 }
 
-function trendFromQoQ(depthChangeQoq) {
+function trendFromQoQ(depthChangeQoq: number): HomeTrend {
   if (depthChangeQoq > 0) return "down";
   if (depthChangeQoq < 0) return "up";
   return "stable";
 }
 
-function statusFromRisk(risk) {
+function statusFromRisk(risk?: string): HomeStatus {
   const s = String(risk || "").toLowerCase();
   if (s.includes("critical") || s.includes("danger")) return "danger";
   if (s.includes("warn")) return "warning";

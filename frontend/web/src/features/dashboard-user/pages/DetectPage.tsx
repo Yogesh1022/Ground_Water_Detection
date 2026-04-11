@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, CalendarClock, Crosshair } from "lucide-react";
 import { Bar, Line } from "react-chartjs-2";
+import { predictDepth } from "../api/commonUserApi";
 
 const chartOptions = {
   responsive: true,
@@ -13,8 +14,6 @@ const chartOptions = {
     y: { grid: { color: "rgba(255,255,255,.04)" }, ticks: { color: "#64748b" } }
   }
 };
-
-const soils = ["Black Cotton", "Alluvial", "Red", "Clay", "Laterite"];
 
 function riskByDepth(absDepth) {
   if (absDepth > 65) {
@@ -132,41 +131,42 @@ function DetectPage() {
     setLocationStatus("Finding your location...");
 
     navigator.geolocation.getCurrentPosition(
-      (p) => {
+      async (p) => {
         const lat = Number(p.coords.latitude.toFixed(4));
         const lon = Number(p.coords.longitude.toFixed(4));
 
-        const baseLat = 20.93;
-        const baseLon = 77.78;
-        const dist = Math.sqrt((lat - baseLat) ** 2 + (lon - baseLon) ** 2);
-        const baseDepth = -(45 + dist * 40 + Math.random() * 8);
-        const depth = Math.max(-85, Math.min(-20, baseDepth));
-        const absDepth = Math.abs(depth);
+        try {
+          const prediction = await predictDepth({ latitude: lat, longitude: lon });
+          const depth = -Math.abs(Number(prediction?.depth_mbgl || 0));
 
-        const conf = (88 + Math.random() * 8).toFixed(0);
-        const rainfall = `${(5 + Math.random() * 20).toFixed(0)}mm`;
-        const soil = soils[Math.floor(Math.random() * soils.length)];
+          const forecast = Array.isArray(prediction?.multi_month_forecast)
+            ? prediction.multi_month_forecast
+            : [];
 
-        const apr = depth - (2 + Math.random() * 3);
-        const may = apr - (3 + Math.random() * 4);
-        const jun = may - (1 + Math.random() * 3);
+          const apr = -Math.abs(Number(forecast[0]?.depth_mbgl ?? prediction?.depth_mbgl ?? 0));
+          const may = -Math.abs(Number(forecast[1]?.depth_mbgl ?? forecast[0]?.depth_mbgl ?? prediction?.depth_mbgl ?? 0));
+          const jun = -Math.abs(Number(forecast[2]?.depth_mbgl ?? forecast[1]?.depth_mbgl ?? prediction?.depth_mbgl ?? 0));
 
-        setResult({
-          lat,
-          lon,
-          depth,
-          conf,
-          rainfall,
-          soil,
-          apr,
-          may,
-          jun,
-          mainRisk: riskByDepth(absDepth),
-          aprRisk: riskByDepth(Math.abs(apr)),
-          mayRisk: riskByDepth(Math.abs(may)),
-          junRisk: riskByDepth(Math.abs(jun))
-        });
-        setLocationStatus("Location found. Water analysis ready.");
+          setResult({
+            lat,
+            lon,
+            depth,
+            conf: String(Math.round(Number(prediction?.confidence_pct || 0))),
+            rainfall: "Live model",
+            soil: "From model",
+            apr,
+            may,
+            jun,
+            mainRisk: riskByDepth(Math.abs(depth)),
+            aprRisk: riskByDepth(Math.abs(apr)),
+            mayRisk: riskByDepth(Math.abs(may)),
+            junRisk: riskByDepth(Math.abs(jun))
+          });
+          setLocationStatus("Location found. Live water analysis ready.");
+        } catch {
+          setLocationStatus("Location found, but prediction service is unavailable right now.");
+          setResult(null);
+        }
       },
       () => {
         setLocationStatus("Could not get location. Please allow location access in your browser and try again.");

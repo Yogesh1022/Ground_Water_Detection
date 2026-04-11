@@ -17,7 +17,30 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Bar, Doughnut, Line, Scatter } from "react-chartjs-2";
-import { getGovProfile } from "../gov/api/govApi";
+import {
+  generateGovReport,
+  getGovCrisisZones,
+  getGovDistrictSummary,
+  getGovForecastLong,
+  getGovForecastShap,
+  getGovOverview,
+  getGovProfile,
+  getGovRainfallDepth,
+  getGovTeamsWorkload,
+  listGovActivity,
+  listGovRequests,
+  listGovTankers,
+  listGovTasks,
+  type GovActivityEntry,
+  type GovComplaint,
+  type GovCrisisZone,
+  type GovDistrictSummaryRow,
+  type GovForecast90Point,
+  type GovOverview,
+  type GovShapFeature,
+  type GovTeamWorkload,
+  type GovTankerRoute,
+} from "../gov/api/govApi";
 import ChartErrorBoundary from "../../components/ChartErrorBoundary";
 import "../../styles/gov-dashboard.css";
 
@@ -28,12 +51,11 @@ type GovNavItem = {
   label: string;
   icon: typeof LayoutDashboard;
   section: "Command" | "Management" | "System";
-  badge?: string;
 };
 
 const navItems: GovNavItem[] = [
   { key: "overview", label: "Command Center", icon: LayoutDashboard, section: "Command" },
-  { key: "requests", label: "All Requests", icon: ClipboardList, section: "Command", badge: "14" },
+  { key: "requests", label: "All Requests", icon: ClipboardList, section: "Command" },
   { key: "districts", label: "District Analytics", icon: MapPin, section: "Command" },
   { key: "forecast", label: "AI Forecasts", icon: Brain, section: "Command" },
   { key: "assign", label: "Task Assignment", icon: Users, section: "Management" },
@@ -65,10 +87,26 @@ const chartOptions = {
   },
 };
 
-function getRiskBadge(depth: number): string {
-  if (depth <= -68) return "g-risk-critical";
-  if (depth <= -55) return "g-risk-high";
+function riskClass(risk: string): string {
+  const r = String(risk || "").toLowerCase();
+  if (r.includes("danger") || r.includes("critical")) return "g-risk-critical";
+  if (r.includes("warning") || r.includes("high")) return "g-risk-high";
   return "g-risk-moderate";
+}
+
+function statusClass(status: string): string {
+  const s = String(status || "").toLowerCase();
+  if (s === "resolved" || s === "completed") return "s-resolved";
+  if (s === "escalated" || s === "critical") return "s-critical";
+  if (s === "in_review" || s === "in_progress" || s === "assigned") return "s-review";
+  return "s-open";
+}
+
+function priorityClass(priority: string): string {
+  const p = String(priority || "").toLowerCase();
+  if (p === "urgent" || p === "critical" || p === "high") return "p-high";
+  if (p === "medium") return "p-med";
+  return "p-low";
 }
 
 export default function GovDashboardFeaturePage() {
@@ -79,6 +117,23 @@ export default function GovDashboardFeaturePage() {
   const [officerName, setOfficerName] = useState(sessionStorage.getItem("aqua_user") || "District Officer");
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState("");
+  const [dataLoading, setDataLoading] = useState(true);
+  const [dataError, setDataError] = useState("");
+
+  const [overview, setOverview] = useState<GovOverview | null>(null);
+  const [requests, setRequests] = useState<GovComplaint[]>([]);
+  const [requestsTotal, setRequestsTotal] = useState(0);
+  const [districtRows, setDistrictRows] = useState<GovDistrictSummaryRow[]>([]);
+  const [rainfallPoints, setRainfallPoints] = useState<Array<{ x: number; y: number }>>([]);
+  const [forecastPoints, setForecastPoints] = useState<GovForecast90Point[]>([]);
+  const [shapFeatures, setShapFeatures] = useState<GovShapFeature[]>([]);
+  const [crisisZones, setCrisisZones] = useState<GovCrisisZone[]>([]);
+  const [tankers, setTankers] = useState<GovTankerRoute[]>([]);
+  const [teamWorkload, setTeamWorkload] = useState<GovTeamWorkload[]>([]);
+  const [activity, setActivity] = useState<GovActivityEntry[]>([]);
+  const [tasks, setTasks] = useState<Array<{ id: number; complaint_id: number; assignee_name: string; priority: string; status: string }>>([]);
+  const [reportBusy, setReportBusy] = useState("");
+  const [reportMessage, setReportMessage] = useState("");
 
   useEffect(() => {
     const role = sessionStorage.getItem("aqua_role");
@@ -108,39 +163,104 @@ export default function GovDashboardFeaturePage() {
     void fetchProfile();
   }, [navigate]);
 
+  useEffect(() => {
+    const role = sessionStorage.getItem("aqua_role");
+    const token = sessionStorage.getItem("aqua_token");
+    if (role !== "gov" || !token) return;
+
+    const fetchGovData = async () => {
+      setDataLoading(true);
+      setDataError("");
+
+      const [
+        overviewRes,
+        requestsRes,
+        districtsRes,
+        rainfallRes,
+        forecastRes,
+        shapRes,
+        crisisRes,
+        tankerRes,
+        workloadRes,
+        activityRes,
+        tasksRes,
+      ] = await Promise.allSettled([
+        getGovOverview(),
+        listGovRequests({ page: 1, limit: 50 }),
+        getGovDistrictSummary(),
+        getGovRainfallDepth(),
+        getGovForecastLong(),
+        getGovForecastShap(),
+        getGovCrisisZones(),
+        listGovTankers(),
+        getGovTeamsWorkload(),
+        listGovActivity({ page: 1, limit: 20 }),
+        listGovTasks({ page: 1, limit: 20 }),
+      ]);
+
+      if (overviewRes.status === "fulfilled") setOverview(overviewRes.value);
+      if (requestsRes.status === "fulfilled") {
+        setRequests(requestsRes.value.data || []);
+        setRequestsTotal(Number(requestsRes.value.meta?.total_items || 0));
+      }
+      if (districtsRes.status === "fulfilled") setDistrictRows(districtsRes.value.data || []);
+      if (rainfallRes.status === "fulfilled") {
+        setRainfallPoints((rainfallRes.value.data || []).map((p) => ({ x: Number(p.rainfall_mm || 0), y: Number(p.depth_mbgl || 0) })));
+      }
+      if (forecastRes.status === "fulfilled") setForecastPoints(forecastRes.value.data || []);
+      if (shapRes.status === "fulfilled") setShapFeatures(shapRes.value.data || []);
+      if (crisisRes.status === "fulfilled") setCrisisZones(crisisRes.value.data || []);
+      if (tankerRes.status === "fulfilled") setTankers(tankerRes.value.data || []);
+      if (workloadRes.status === "fulfilled") setTeamWorkload(workloadRes.value.data || []);
+      if (activityRes.status === "fulfilled") setActivity(activityRes.value.data || []);
+      if (tasksRes.status === "fulfilled") setTasks(tasksRes.value.data || []);
+
+      const failed = [overviewRes, requestsRes, districtsRes, rainfallRes, forecastRes, shapRes, crisisRes, tankerRes, workloadRes, activityRes, tasksRes].filter(
+        (r) => r.status === "rejected",
+      ).length;
+      if (failed > 0) {
+        setDataError(`Some dashboard sections failed to load (${failed}).`);
+      }
+
+      setDataLoading(false);
+    };
+
+    void fetchGovData();
+  }, []);
+
   const commandCenterData = useMemo(
     () => ({
       category: {
-        labels: ["Well/Borewell", "No Tanker", "Pipeline", "Hand Pump", "Quality"],
+        labels: (overview?.category_counts || []).map((item) => item.category),
         datasets: [
           {
-            data: [22, 18, 12, 9, 7],
+            data: (overview?.category_counts || []).map((item) => item.count),
             backgroundColor: ["#fb7185", "#fbbf24", "#3b82f6", "#22d3ee", "#a855f7"],
             borderWidth: 0,
           },
         ],
       },
       crisis: {
-        labels: ["Yavatmal", "Amravati", "Akola", "Buldhana", "Washim", "Wardha", "Nagpur"],
+        labels: (overview?.crisis_series || []).map((item) => item.district),
         datasets: [
           {
-            data: [9.2, 8.4, 7.1, 6.8, 6.2, 4.5, 3.8],
+            data: (overview?.crisis_series || []).map((item) => item.score),
             backgroundColor: ["#fb7185", "#fb7185", "#fbbf24", "#fbbf24", "#fbbf24", "#22d3ee", "#34d399"],
             borderRadius: 8,
           },
         ],
       },
     }),
-    [],
+    [overview],
   );
 
   const districtData = useMemo(
     () => ({
       groundwater: {
-        labels: ["Yavatmal", "Amravati", "Akola", "Buldhana", "Washim", "Wardha", "Nagpur", "Chandrapur", "Bhandara"],
+        labels: districtRows.map((row) => row.district),
         datasets: [
           {
-            data: [72.1, 63.4, 58.7, 55.8, 52.3, 41.2, 36.5, 32.1, 28.4],
+            data: districtRows.map((row) => row.avg_depth_mbgl),
             backgroundColor: "rgba(59,130,246,.65)",
             borderRadius: 6,
           },
@@ -150,63 +270,85 @@ export default function GovDashboardFeaturePage() {
         datasets: [
           {
             label: "District points",
-            data: [
-              { x: 580, y: -35 },
-              { x: 620, y: -38 },
-              { x: 490, y: -55 },
-              { x: 450, y: -60 },
-              { x: 720, y: -28 },
-              { x: 680, y: -32 },
-              { x: 410, y: -68 },
-              { x: 380, y: -72 },
-              { x: 530, y: -48 },
-            ],
+            data: rainfallPoints,
             backgroundColor: "rgba(59,130,246,.75)",
             pointRadius: 6,
           },
         ],
       },
     }),
-    [],
+    [districtRows, rainfallPoints],
   );
 
   const forecastData = useMemo(
     () => ({
       depth90: {
-        labels: ["Mar", "Apr", "May", "Jun", "Jul", "Aug"],
+        labels: forecastPoints.map((point) => point.month),
         datasets: [
           {
-            label: "Historical",
-            data: [-63.4, -65, null, null, null, null],
+            label: "Predicted Depth",
+            data: forecastPoints.map((point) => point.depth_mbgl),
             borderColor: "#22d3ee",
             tension: 0.4,
             pointRadius: 3,
-            borderDash: [4, 4],
           },
           {
-            label: "Forecast",
-            data: [null, -65, -71, -75, -70, -62],
+            label: "Upper Band",
+            data: forecastPoints.map((point) => point.upper_band),
             borderColor: "#a855f7",
-            backgroundColor: "rgba(168,85,247,.08)",
-            fill: true,
+            backgroundColor: "rgba(168,85,247,.1)",
+            fill: false,
+            tension: 0.4,
+            pointRadius: 3,
+          },
+          {
+            label: "Lower Band",
+            data: forecastPoints.map((point) => point.lower_band),
+            borderColor: "#34d399",
+            fill: false,
             tension: 0.4,
             pointRadius: 3,
           },
         ],
       },
       shap: {
-        labels: ["Prev Month Depth", "Rainfall Lag", "Soil Moisture", "Season", "Rolling Avg", "NDVI", "Temp Max"],
+        labels: shapFeatures.map((item) => item.name),
         datasets: [
           {
-            data: [0.31, 0.24, 0.18, 0.11, 0.08, 0.05, 0.03],
+            data: shapFeatures.map((item) => item.importance),
             backgroundColor: "rgba(168,85,247,.7)",
             borderRadius: 5,
           },
         ],
       },
     }),
-    [],
+    [forecastPoints, shapFeatures],
   );
+
+  const requestStatusCounts = useMemo(() => {
+    const counts: Record<string, number> = { open: 0, in_review: 0, critical: 0, resolved: 0 };
+    for (const row of requests) {
+      const s = String(row.status || "").toLowerCase();
+      if (s === "open") counts.open += 1;
+      if (s === "in_review" || s === "in_progress") counts.in_review += 1;
+      if (s === "escalated") counts.critical += 1;
+      if (s === "resolved") counts.resolved += 1;
+    }
+    return counts;
+  }, [requests]);
+
+  const handleGenerateReport = async (reportType: string) => {
+    setReportBusy(reportType);
+    setReportMessage("");
+    try {
+      const res = await generateGovReport(reportType);
+      setReportMessage(res.file_url ? `Generated: ${res.file_url}` : res.message || "Report generated.");
+    } catch (error) {
+      setReportMessage(error instanceof Error ? error.message : "Report generation failed.");
+    } finally {
+      setReportBusy("");
+    }
+  };
 
   const logout = () => {
     sessionStorage.clear();
@@ -216,11 +358,11 @@ export default function GovDashboardFeaturePage() {
   const renderOverview = () => (
     <>
       <div className="g-kpi-row">
-        <article className="g-kpi"><div className="g-kpi-value tone-rose">14</div><div className="g-kpi-label">Open Requests</div><div className="g-kpi-hint">+3 today</div></article>
-        <article className="g-kpi"><div className="g-kpi-value tone-amber">6</div><div className="g-kpi-label">In Progress</div><div className="g-kpi-hint">2 overdue</div></article>
-        <article className="g-kpi"><div className="g-kpi-value tone-green">48</div><div className="g-kpi-label">Resolved (Month)</div><div className="g-kpi-hint">94% rate</div></article>
-        <article className="g-kpi"><div className="g-kpi-value tone-rose">3</div><div className="g-kpi-label">Critical Zones</div><div className="g-kpi-hint">1 escalated</div></article>
-        <article className="g-kpi"><div className="g-kpi-value tone-blue">12</div><div className="g-kpi-label">Tankers Active</div><div className="g-kpi-hint">3 routes today</div></article>
+        <article className="g-kpi"><div className="g-kpi-value tone-rose">{overview?.open_complaints ?? 0}</div><div className="g-kpi-label">Open Requests</div><div className="g-kpi-hint">District: {overview?.district || "-"}</div></article>
+        <article className="g-kpi"><div className="g-kpi-value tone-amber">{overview?.pending_tasks ?? 0}</div><div className="g-kpi-label">Pending Tasks</div><div className="g-kpi-hint">Live task queue</div></article>
+        <article className="g-kpi"><div className="g-kpi-value tone-green">{overview?.resolved_this_month ?? 0}</div><div className="g-kpi-label">Resolved (Month)</div><div className="g-kpi-hint">Live complaint status</div></article>
+        <article className="g-kpi"><div className="g-kpi-value tone-rose">{crisisZones.filter((z) => String(z.risk_status).toUpperCase() === "DANGER").length}</div><div className="g-kpi-label">Critical Zones</div><div className="g-kpi-hint">From crisis-zones API</div></article>
+        <article className="g-kpi"><div className="g-kpi-value tone-blue">{overview?.active_tanker_routes ?? 0}</div><div className="g-kpi-label">Tankers Active</div><div className="g-kpi-hint">District routes</div></article>
       </div>
 
       <div className="g-grid-2">
@@ -248,19 +390,31 @@ export default function GovDashboardFeaturePage() {
           <table className="g-table">
             <thead><tr><th>ID</th><th>Issue</th><th>Village</th><th>Priority</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
-              <tr><td>#R-1042</td><td>Well dried up</td><td>Warud</td><td><span className="g-tag p-high">HIGH</span></td><td><span className="g-status s-open">OPEN</span></td><td><button className="g-btn g-btn-primary">Assign</button></td></tr>
-              <tr><td>#R-1041</td><td>No tanker 7 days</td><td>Morshi</td><td><span className="g-tag p-high">HIGH</span></td><td><span className="g-status s-critical">CRITICAL</span></td><td><button className="g-btn g-btn-danger">Escalate</button></td></tr>
-              <tr><td>#R-1039</td><td>Pipeline burst</td><td>Daryapur</td><td><span className="g-tag p-med">MED</span></td><td><span className="g-status s-review">REVIEW</span></td><td><button className="g-btn g-btn-ghost">View</button></td></tr>
+              {(overview?.priority_requests || []).map((row) => (
+                <tr key={row.id}>
+                  <td>{row.tracking_number}</td>
+                  <td>{row.issue}</td>
+                  <td>{row.village || "-"}</td>
+                  <td><span className={`g-tag ${priorityClass(row.priority)}`}>{String(row.priority || "-").toUpperCase()}</span></td>
+                  <td><span className={`g-status ${statusClass(row.status)}`}>{String(row.status || "-").toUpperCase()}</span></td>
+                  <td><button className="g-btn g-btn-ghost">{row.assigned_to ? row.assigned_to : "Unassigned"}</button></td>
+                </tr>
+              ))}
+              {(overview?.priority_requests || []).length === 0 ? (
+                <tr><td colSpan={6}>No priority requests available.</td></tr>
+              ) : null}
             </tbody>
           </table>
         </section>
 
         <section className="g-card">
           <div className="g-card-head">Recent Activity</div>
-          <div className="g-activity-item"><span className="g-activity-dot tone-green" /> #R-1038 resolved, tanker dispatched · 10:32 AM</div>
-          <div className="g-activity-item"><span className="g-activity-dot tone-blue" /> Task assigned to Field Engineer Patil · 09:15 AM</div>
-          <div className="g-activity-item"><span className="g-activity-dot tone-rose" /> AI alert: Yavatmal crossed -72m · 06:00 AM</div>
-          <div className="g-activity-item"><span className="g-activity-dot tone-amber" /> #R-1041 escalated to collector · Yesterday</div>
+          {(overview?.recent_activity || []).map((entry, idx) => (
+            <div className="g-activity-item" key={`${entry.timestamp}-${idx}`}>
+              <span className="g-activity-dot tone-blue" /> {entry.action} {entry.target ? `(${entry.target})` : ""} · {entry.timestamp}
+            </div>
+          ))}
+          {(overview?.recent_activity || []).length === 0 ? <div className="g-activity-item">No recent activity available.</div> : null}
         </section>
       </div>
     </>
@@ -270,31 +424,33 @@ export default function GovDashboardFeaturePage() {
     <section className="g-card">
       <div className="g-card-title-row"><div className="g-card-head">All Citizen Requests</div><button className="g-btn g-btn-primary">Export</button></div>
       <div className="g-filter-row">
-        <button className="g-pill active">ALL (68)</button>
-        <button className="g-pill">OPEN (14)</button>
-        <button className="g-pill">IN REVIEW (6)</button>
-        <button className="g-pill">CRITICAL (3)</button>
-        <button className="g-pill">RESOLVED (45)</button>
+        <button className="g-pill active">ALL ({requestsTotal || requests.length})</button>
+        <button className="g-pill">OPEN ({requestStatusCounts.open})</button>
+        <button className="g-pill">IN REVIEW ({requestStatusCounts.in_review})</button>
+        <button className="g-pill">CRITICAL ({requestStatusCounts.critical})</button>
+        <button className="g-pill">RESOLVED ({requestStatusCounts.resolved})</button>
       </div>
       <table className="g-table">
         <thead><tr><th>Report ID</th><th>Citizen</th><th>Issue</th><th>Location</th><th>Priority</th><th>Status</th><th>Assigned</th></tr></thead>
         <tbody>
-          <tr><td>#R-1042</td><td>R. Deshmukh</td><td>Well Dry</td><td>Warud, Amravati</td><td><span className="g-tag p-high">HIGH</span></td><td><span className="g-status s-open">OPEN</span></td><td>-</td></tr>
-          <tr><td>#R-1041</td><td>S. Wankhede</td><td>No Tanker</td><td>Morshi, Amravati</td><td><span className="g-tag p-high">HIGH</span></td><td><span className="g-status s-critical">CRITICAL</span></td><td>Escalated</td></tr>
-          <tr><td>#R-1040</td><td>P. Kale</td><td>Hand Pump</td><td>Chandur, Amravati</td><td><span className="g-tag p-med">MED</span></td><td><span className="g-status s-assigned">ASSIGNED</span></td><td>Patil</td></tr>
+          {requests.map((row) => (
+            <tr key={row.id}>
+              <td>{row.tracking_number}</td>
+              <td>-</td>
+              <td>{row.type}</td>
+              <td>{[row.village, row.taluka, row.district].filter(Boolean).join(", ")}</td>
+              <td><span className={`g-tag ${priorityClass(row.priority)}`}>{String(row.priority || "-").toUpperCase()}</span></td>
+              <td><span className={`g-status ${statusClass(row.status)}`}>{String(row.status || "-").toUpperCase()}</span></td>
+              <td>{row.assigned_officer_id ? `Officer #${row.assigned_officer_id}` : "-"}</td>
+            </tr>
+          ))}
+          {requests.length === 0 ? <tr><td colSpan={7}>No requests found.</td></tr> : null}
         </tbody>
       </table>
     </section>
   );
 
   const renderDistricts = () => {
-    const rows = [
-      { district: "Yavatmal", depth: -72.1, wells: 85, reports: 21, tankers: 18 },
-      { district: "Amravati", depth: -63.4, wells: 72, reports: 14, tankers: 12 },
-      { district: "Akola", depth: -58.7, wells: 61, reports: 8, tankers: 7 },
-      { district: "Wardha", depth: -41.2, wells: 44, reports: 4, tankers: 3 },
-    ];
-
     return (
       <>
         <div className="g-grid-2">
@@ -324,13 +480,14 @@ export default function GovDashboardFeaturePage() {
               {rows.map((row) => (
                 <tr key={row.district}>
                   <td>{row.district}</td>
-                  <td>{row.depth}m</td>
+                  <td>{Number(row.avg_depth_mbgl || 0).toFixed(2)}m</td>
                   <td>{row.wells}</td>
                   <td>{row.reports}</td>
-                  <td><span className={`g-status ${getRiskBadge(row.depth)}`}>{row.depth <= -68 ? "CRITICAL" : row.depth <= -55 ? "HIGH" : "MODERATE"}</span></td>
+                  <td><span className={`g-status ${riskClass(row.risk)}`}>{String(row.risk || "-").toUpperCase()}</span></td>
                   <td>{row.tankers}</td>
                 </tr>
               ))}
+              {districtRows.length === 0 ? <tr><td colSpan={6}>No district summary available.</td></tr> : null}
             </tbody>
           </table>
         </section>
@@ -348,7 +505,7 @@ export default function GovDashboardFeaturePage() {
               <Line data={forecastData.depth90} options={chartOptions} />
             </ChartErrorBoundary>
           </div>
-          <div className="g-note"><strong>Ensemble:</strong> XGBoost + RF + LSTM + GRU · R² 0.89 · RMSE 0.43m</div>
+          <div className="g-note"><strong>Source:</strong> Live /forecast/long endpoint with confidence bands.</div>
         </section>
         <section className="g-card">
           <div className="g-card-head">SHAP Feature Importance</div>
@@ -365,9 +522,16 @@ export default function GovDashboardFeaturePage() {
         <table className="g-table">
           <thead><tr><th>District</th><th>Current</th><th>Predicted</th><th>Confidence</th><th>Action</th></tr></thead>
           <tbody>
-            <tr><td>Yavatmal</td><td>-72.1m</td><td className="tone-rose">-78.4m</td><td>96%</td><td>Emergency tanker + well deepening</td></tr>
-            <tr><td>Amravati</td><td>-63.4m</td><td className="tone-rose">-71.2m</td><td>94%</td><td>Pre-position tankers</td></tr>
-            <tr><td>Akola</td><td>-58.7m</td><td className="tone-amber">-64.1m</td><td>87%</td><td>Weekly monitoring</td></tr>
+            {crisisZones.map((zone) => (
+              <tr key={zone.district}>
+                <td>{zone.district}</td>
+                <td>{Number(zone.avg_depth_mbgl || 0).toFixed(2)}m</td>
+                <td className={String(zone.risk_status).toUpperCase() === "DANGER" ? "tone-rose" : "tone-amber"}>{Number(zone.avg_depth_mbgl || 0).toFixed(2)}m</td>
+                <td>{Math.min(99, Math.max(60, Math.round(Number(zone.crisis_index || 0))))}%</td>
+                <td>{String(zone.risk_status).toUpperCase() === "DANGER" ? "Emergency tanker + escalation" : "Weekly monitoring"}</td>
+              </tr>
+            ))}
+            {crisisZones.length === 0 ? <tr><td colSpan={5}>No crisis forecast rows available.</td></tr> : null}
           </tbody>
         </table>
       </section>
@@ -393,9 +557,34 @@ export default function GovDashboardFeaturePage() {
         <table className="g-table">
           <thead><tr><th>Team</th><th>Active</th><th>Done</th><th>Status</th></tr></thead>
           <tbody>
-            <tr><td>Eng. Patil</td><td>3</td><td>12</td><td><span className="g-status s-review">BUSY</span></td></tr>
-            <tr><td>Lab Sharma</td><td>1</td><td>8</td><td><span className="g-status s-resolved">FREE</span></td></tr>
-            <tr><td>Field Team A</td><td>4</td><td>22</td><td><span className="g-status s-critical">FULL</span></td></tr>
+            {teamWorkload.map((row) => (
+              <tr key={row.officer_id}>
+                <td>{row.officer_name}</td>
+                <td>{Number(row.pending || 0) + Number(row.in_progress || 0)}</td>
+                <td>{row.completed}</td>
+                <td><span className={`g-status ${Number(row.total || 0) >= 5 ? "s-critical" : Number(row.total || 0) >= 3 ? "s-review" : "s-resolved"}`}>{Number(row.total || 0) >= 5 ? "FULL" : Number(row.total || 0) >= 3 ? "BUSY" : "FREE"}</span></td>
+              </tr>
+            ))}
+            {teamWorkload.length === 0 ? <tr><td colSpan={4}>No workload data available.</td></tr> : null}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="g-card">
+        <div className="g-card-head">Recent Tasks</div>
+        <table className="g-table">
+          <thead><tr><th>Task ID</th><th>Complaint</th><th>Assignee</th><th>Priority</th><th>Status</th></tr></thead>
+          <tbody>
+            {tasks.map((task) => (
+              <tr key={task.id}>
+                <td>{task.id}</td>
+                <td>{task.complaint_id}</td>
+                <td>{task.assignee_name || "-"}</td>
+                <td><span className={`g-tag ${priorityClass(task.priority)}`}>{String(task.priority || "-").toUpperCase()}</span></td>
+                <td><span className={`g-status ${statusClass(task.status)}`}>{String(task.status || "-").toUpperCase()}</span></td>
+              </tr>
+            ))}
+            {tasks.length === 0 ? <tr><td colSpan={5}>No task data available.</td></tr> : null}
           </tbody>
         </table>
       </section>
@@ -408,9 +597,17 @@ export default function GovDashboardFeaturePage() {
       <table className="g-table">
         <thead><tr><th>Tanker</th><th>Route</th><th>Villages</th><th>Schedule</th><th>Capacity</th><th>Status</th></tr></thead>
         <tbody>
-          <tr><td>T-001</td><td>Amravati → Warud</td><td>Warud, Nandgaon, Pusad</td><td>Mon, Thu</td><td>10,000L</td><td><span className="g-status s-resolved">ACTIVE</span></td></tr>
-          <tr><td>T-002</td><td>Yavatmal → Morshi</td><td>Morshi, Kalamb, Arni</td><td>Daily</td><td>12,000L</td><td><span className="g-status s-resolved">ACTIVE</span></td></tr>
-          <tr><td>T-004</td><td>Emergency — Yavatmal</td><td>Pusad, Umarkhed</td><td>On-demand</td><td>15,000L</td><td><span className="g-status s-critical">URGENT</span></td></tr>
+          {tankers.map((row) => (
+            <tr key={row.id}>
+              <td>T-{String(row.id).padStart(3, "0")}</td>
+              <td>{row.route_name || "-"}</td>
+              <td>{Array.isArray(row.villages) ? row.villages.join(", ") : "-"}</td>
+              <td>{row.schedule || "-"}</td>
+              <td>{Number(row.capacity_liters || 0).toLocaleString()}L</td>
+              <td><span className={`g-status ${String(row.status).toLowerCase() === "active" ? "s-resolved" : "s-review"}`}>{String(row.status || "-").toUpperCase()}</span></td>
+            </tr>
+          ))}
+          {tankers.length === 0 ? <tr><td colSpan={6}>No tanker routes available.</td></tr> : null}
         </tbody>
       </table>
     </section>
@@ -418,9 +615,10 @@ export default function GovDashboardFeaturePage() {
 
   const renderReports = () => (
     <div className="g-grid-3">
-      <article className="g-report-card"><FileBarChart size={44} /><h4>Monthly Status Report</h4><p>District water summary</p><button className="g-btn g-btn-primary">PDF</button></article>
-      <article className="g-report-card"><Brain size={44} /><h4>AI Prediction Report</h4><p>90-day forecast and confidence</p><button className="g-btn g-btn-primary">PDF</button></article>
-      <article className="g-report-card"><Users size={44} /><h4>Citizen Request Report</h4><p>Requests and resolution times</p><button className="g-btn g-btn-primary">CSV</button></article>
+      <article className="g-report-card"><FileBarChart size={44} /><h4>Monthly Status Report</h4><p>District water summary</p><button className="g-btn g-btn-primary" disabled={reportBusy === "monthly_status"} onClick={() => void handleGenerateReport("monthly_status")}>PDF</button></article>
+      <article className="g-report-card"><Brain size={44} /><h4>AI Prediction Report</h4><p>90-day forecast and confidence</p><button className="g-btn g-btn-primary" disabled={reportBusy === "ai_prediction"} onClick={() => void handleGenerateReport("ai_prediction")}>PDF</button></article>
+      <article className="g-report-card"><Users size={44} /><h4>Citizen Request Report</h4><p>Requests and resolution times</p><button className="g-btn g-btn-primary" disabled={reportBusy === "citizen_requests"} onClick={() => void handleGenerateReport("citizen_requests")}>CSV</button></article>
+      {reportMessage ? <div className="g-note">{reportMessage}</div> : null}
     </div>
   );
 
@@ -430,9 +628,16 @@ export default function GovDashboardFeaturePage() {
       <table className="g-table">
         <thead><tr><th>Timestamp</th><th>Actor</th><th>Action</th><th>Target</th><th>Details</th></tr></thead>
         <tbody>
-          <tr><td>Mar 11, 10:32</td><td>Officer Kulkarni</td><td className="tone-green">RESOLVED</td><td>#R-1038</td><td>Tanker dispatched</td></tr>
-          <tr><td>Mar 11, 09:15</td><td>Officer Kulkarni</td><td className="tone-blue">ASSIGNED</td><td>#R-1040</td><td>Field Eng. Patil</td></tr>
-          <tr><td>Mar 10, 06:00</td><td>AI System</td><td className="tone-rose">ALERT</td><td>Yavatmal</td><td>GW crossed -72m</td></tr>
+          {activity.map((entry) => (
+            <tr key={entry.id}>
+              <td>{new Date(entry.created_at).toLocaleString()}</td>
+              <td>{entry.actor_role || `ID ${entry.actor_id}`}</td>
+              <td className="tone-blue">{entry.action}</td>
+              <td>{entry.target_table}#{entry.target_id}</td>
+              <td>{entry.details ? JSON.stringify(entry.details) : "-"}</td>
+            </tr>
+          ))}
+          {activity.length === 0 ? <tr><td colSpan={5}>No activity logs available.</td></tr> : null}
         </tbody>
       </table>
     </section>
@@ -528,6 +733,10 @@ export default function GovDashboardFeaturePage() {
           {profileError ? (
             <div className="g-banner g-banner-warn">Profile sync failed: {profileError}. Using session data.</div>
           ) : null}
+          {dataLoading ? (
+            <div className="g-banner g-banner-info"><Loader2 size={15} className="g-spin" /> Loading live gov dashboard data...</div>
+          ) : null}
+          {dataError ? <div className="g-banner g-banner-warn">{dataError}</div> : null}
           {renderPage()}
         </section>
       </main>

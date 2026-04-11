@@ -20,3 +20,11 @@ export async function createComplaint(payload: ComplaintPayload): Promise<Compla
 export async function trackComplaint(tracking: string): Promise<ComplaintTrackResponse> {
   return httpRequest("GET", `/complaints/track/${encodeURIComponent(tracking)}`);
 }
+
+export async function getGroundwaterReadings(query: Record<string, unknown> = {}) {
+  return httpRequest("GET", "/groundwater-readings", { query });
+}
+
+export async function predictDepth(payload: Record<string, unknown>) {
+  return httpRequest("POST", "/predict", { body: payload });
+}
