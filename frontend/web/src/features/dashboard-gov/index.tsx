@@ -477,7 +477,7 @@ export default function GovDashboardFeaturePage() {
           <table className="g-table">
             <thead><tr><th>District</th><th>Avg Depth</th><th>Wells</th><th>Reports</th><th>Risk</th><th>Tankers</th></tr></thead>
             <tbody>
-              {rows.map((row) => (
+              {districtRows.map((row) => (
                 <tr key={row.district}>
                   <td>{row.district}</td>
                   <td>{Number(row.avg_depth_mbgl || 0).toFixed(2)}m</td>
