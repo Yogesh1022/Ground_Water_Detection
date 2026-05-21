@@ -1,15 +1,12 @@
--- Seed groundwater wells + readings from extended Vidarbha CSV.
--- Usage (from workspace root):
---   psql -h localhost -p 5432 -U postgres -d aquavidarbha \
---     -f backend/migrations/seed_groundwater_from_csv.sql
+-- Seed groundwater wells + readings from the model-ready Vidarbha CSV.
+-- The CSV contains 650 unique coordinates and 129 monthly rows per well.
+-- We reconstruct the wells table from coordinates and synthesize reading dates
+-- starting at 2015-04-01 so the temporal engine can use the historical series.
 
 BEGIN;
 
 CREATE TEMP TABLE stg_groundwater_csv (
-    well_id TEXT,
-    date TEXT,
-    year TEXT,
-    district TEXT,
+    src_row BIGSERIAL,
     depth_mbgl TEXT,
     rainfall_mm TEXT,
     temperature_avg TEXT,
@@ -38,9 +35,21 @@ CREATE TEMP TABLE stg_groundwater_csv (
     ndvi TEXT
 );
 
-\copy stg_groundwater_csv FROM 'data/vidarbha_groundwater_extended_v2.csv' WITH (FORMAT csv, HEADER true)
+\copy stg_groundwater_csv (depth_mbgl, rainfall_mm, temperature_avg, humidity, evapotranspiration, soil_moisture_index, rainfall_lag_1m, rainfall_lag_2m, rainfall_lag_3m, rainfall_rolling_3m, rainfall_rolling_6m, rainfall_deficit, cumulative_deficit, temp_rainfall_ratio, depth_lag_1q, depth_lag_2q, depth_change_rate, month, season_encoded, district_encoded, latitude, longitude, elevation_m, slope_degree, soil_type_encoded, ndvi) FROM '/tmp/vidarbha_groundwater_model_ready.csv' WITH (FORMAT csv, HEADER true)
 
--- Create one well row per CSV well_id if it does not already exist.
+WITH well_points AS (
+    SELECT
+        MIN(src_row) AS first_src_row,
+        latitude::DOUBLE PRECISION AS latitude,
+        longitude::DOUBLE PRECISION AS longitude,
+        COALESCE(NULLIF(MIN(district_encoded), '')::INT, 0) AS district_code,
+        NULLIF(MIN(elevation_m), '')::DOUBLE PRECISION AS elevation_m,
+        NULLIF(MIN(soil_type_encoded), '')::SMALLINT AS soil_type_code
+    FROM stg_groundwater_csv
+    WHERE latitude IS NOT NULL AND latitude <> ''
+      AND longitude IS NOT NULL AND longitude <> ''
+    GROUP BY latitude, longitude
+)
 INSERT INTO wells (
     name,
     district,
@@ -51,29 +60,34 @@ INSERT INTO wells (
     soil_type,
     is_active
 )
-SELECT DISTINCT
-    s.well_id,
-    s.district,
-    s.latitude::DOUBLE PRECISION,
-    s.longitude::DOUBLE PRECISION,
-    NULLIF(s.elevation_m, '')::DOUBLE PRECISION,
+SELECT
+    'VID_' || LPAD(ROW_NUMBER() OVER (ORDER BY first_src_row)::TEXT, 4, '0') AS name,
+    'District_' || district_code::TEXT AS district,
+    latitude,
+    longitude,
+    elevation_m,
     NULL::DOUBLE PRECISION,
-    NULL::TEXT,
+    CASE
+        WHEN soil_type_code IS NULL THEN NULL
+        ELSE 'Soil_' || soil_type_code::TEXT
+    END,
     TRUE
-FROM stg_groundwater_csv s
-WHERE s.well_id IS NOT NULL
-  AND s.well_id <> ''
-  AND s.latitude IS NOT NULL
-  AND s.latitude <> ''
-  AND s.longitude IS NOT NULL
-  AND s.longitude <> ''
-  AND NOT EXISTS (
-      SELECT 1
-      FROM wells w
-      WHERE w.name = s.well_id
-  );
+FROM well_points
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM wells w
+    WHERE w.latitude = well_points.latitude
+      AND w.longitude = well_points.longitude
+);
 
--- Map CSV features into existing well_readings schema.
+WITH ordered_rows AS (
+    SELECT
+        s.*,
+        ROW_NUMBER() OVER (PARTITION BY s.latitude, s.longitude ORDER BY s.src_row) AS reading_seq
+    FROM stg_groundwater_csv s
+    WHERE s.latitude IS NOT NULL AND s.latitude <> ''
+      AND s.longitude IS NOT NULL AND s.longitude <> ''
+)
 INSERT INTO well_readings (
     well_id,
     reading_date,
@@ -101,33 +115,32 @@ INSERT INTO well_readings (
 )
 SELECT
     w.id,
-    s.date::DATE,
-    NULLIF(s.depth_mbgl, '')::DOUBLE PRECISION,
+    (DATE '2015-04-01' + ((o.reading_seq - 1) * INTERVAL '1 month'))::DATE,
+    NULLIF(o.depth_mbgl, '')::DOUBLE PRECISION,
     NULL::DOUBLE PRECISION,
     NULL::DOUBLE PRECISION,
     NULL::DOUBLE PRECISION,
     NULL::DOUBLE PRECISION,
-    NULLIF(s.depth_lag_1q, '')::DOUBLE PRECISION,
-    NULLIF(s.depth_lag_2q, '')::DOUBLE PRECISION,
+    NULLIF(o.depth_lag_1q, '')::DOUBLE PRECISION,
+    NULLIF(o.depth_lag_2q, '')::DOUBLE PRECISION,
     NULL::DOUBLE PRECISION,
-    NULLIF(s.rainfall_mm, '')::DOUBLE PRECISION,
-    NULLIF(s.rainfall_lag_1m, '')::DOUBLE PRECISION,
-    NULLIF(s.rainfall_rolling_3m, '')::DOUBLE PRECISION,
-    NULLIF(s.rainfall_deficit, '')::DOUBLE PRECISION,
-    NULL::DOUBLE PRECISION,
-    NULL::DOUBLE PRECISION,
-    NULLIF(s.temperature_avg, '')::DOUBLE PRECISION,
+    NULLIF(o.rainfall_mm, '')::DOUBLE PRECISION,
+    NULLIF(o.rainfall_lag_1m, '')::DOUBLE PRECISION,
+    NULLIF(o.rainfall_rolling_3m, '')::DOUBLE PRECISION,
+    NULLIF(o.rainfall_deficit, '')::DOUBLE PRECISION,
     NULL::DOUBLE PRECISION,
     NULL::DOUBLE PRECISION,
-    NULLIF(s.humidity, '')::DOUBLE PRECISION,
-    NULLIF(s.evapotranspiration, '')::DOUBLE PRECISION,
-    NULLIF(s.ndvi, '')::DOUBLE PRECISION,
-    NULLIF(s.soil_type_encoded, '')::SMALLINT
-FROM stg_groundwater_csv s
+    NULLIF(o.temperature_avg, '')::DOUBLE PRECISION,
+    NULL::DOUBLE PRECISION,
+    NULL::DOUBLE PRECISION,
+    NULLIF(o.humidity, '')::DOUBLE PRECISION,
+    NULLIF(o.evapotranspiration, '')::DOUBLE PRECISION,
+    NULLIF(o.ndvi, '')::DOUBLE PRECISION,
+    NULLIF(o.soil_type_encoded, '')::SMALLINT
+FROM ordered_rows o
 JOIN wells w
-  ON w.name = s.well_id
-WHERE s.date IS NOT NULL
-  AND s.date <> ''
+  ON w.latitude = o.latitude::DOUBLE PRECISION
+ AND w.longitude = o.longitude::DOUBLE PRECISION
 ON CONFLICT (well_id, reading_date) DO UPDATE
 SET
     depth_mbgl = EXCLUDED.depth_mbgl,
@@ -144,6 +157,8 @@ SET
     soil_type_code = EXCLUDED.soil_type_code;
 
 COMMIT;
+
+REFRESH MATERIALIZED VIEW district_stats;
 
 -- Post-load checks:
 -- SELECT COUNT(*) AS wells_count FROM wells WHERE name LIKE 'VID_%';

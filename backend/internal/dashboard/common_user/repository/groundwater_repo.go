@@ -55,11 +55,12 @@ func (r *GroundwaterReadingsRepo) ListReadings(ctx context.Context, q dto.Ground
 
 	// Validate sort fields
 	sortBy := "wr.reading_date"
-	if q.SortBy == "well_id" {
+	switch q.SortBy {
+	case "well_id":
 		sortBy = "wr.well_id"
-	} else if q.SortBy == "depth_mbgl" {
+	case "depth_mbgl":
 		sortBy = "wr.depth_mbgl"
-	} else if q.SortBy == "rainfall_mm" {
+	case "rainfall_mm":
 		sortBy = "wr.rainfall_mm"
 	}
 

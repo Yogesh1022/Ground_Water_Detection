@@ -7,8 +7,8 @@ import (
 )
 
 // RegisterRoutes registers common user endpoints.
-func RegisterRoutes(rg *gin.RouterGroup, db *pgxpool.Pool, redisClient *redis.Client) {
-	h := NewCommonUserHandler(db, redisClient)
+func RegisterRoutes(rg *gin.RouterGroup, db *pgxpool.Pool, redisClient *redis.Client, mlServiceURL string) {
+	h := NewCommonUserHandler(db, redisClient, mlServiceURL)
 
 	rg.GET("/me", h.getProfile)
 	rg.GET("/wells", h.listWells)

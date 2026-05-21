@@ -1,4 +1,4 @@
-.PHONY: help run build tidy clean install-air air docker-up docker-start docker-down docker-reset docker-logs docker-ps docker-db-only
+.PHONY: help run build tidy clean install-air air docker-up docker-start docker-down docker-reset docker-logs docker-ps docker-db-only seed-groundwater
 
 # Run `make help` to see exact commands and their use.
 help:
@@ -18,6 +18,7 @@ help:
 	@echo "  make docker-reset   -> docker compose down -v && docker compose up -d --build (wipe volumes and recreate)"
 	@echo "  make docker-logs    -> docker compose logs -f backend   (tail backend logs)"
 	@echo "  make docker-ps      -> docker compose ps                (service status)"
+	@echo "  make seed-groundwater -> powershell -File ./scripts/import_groundwater_data.ps1 (load CSV into Postgres)"
 
 # Local dev
 run:
@@ -64,3 +65,6 @@ docker-logs:
 
 docker-ps:
 	docker compose ps
+
+seed-groundwater:
+	powershell -ExecutionPolicy Bypass -File ./scripts/import_groundwater_data.ps1
