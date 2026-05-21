@@ -449,7 +449,7 @@ CREATE TABLE data_sources (
 
 -- Seed known data sources
 INSERT INTO data_sources (source_name, source_type, description, record_count, update_frequency, coverage, quality_score) VALUES
-    ('Vidarbha Groundwater CSV',    'CSV',      'Historical groundwater depth readings from CGWB',  84000, 'Monthly',   '11 Districts, 624 wells', 96.0),
+    ('Vidarbha Groundwater CSV',    'CSV',      'Historical groundwater depth readings from CGWB',  83850, 'Monthly',   '11 Districts, 624 wells', 96.0),
     ('Open-Meteo Weather API',      'API',      'Real-time weather: temp, humidity, rainfall',      0,     'Real-time', '11 Districts',            98.0),
     ('ISRO NDVI Satellite',         'Satellite','Normalized Difference Vegetation Index rasters',   0,     'Monthly',   'Vidarbha Region',         94.0),
     ('NBSS Soil Map',               'CSV',      'National Bureau of Soil Survey soil type data',    624,   'Yearly',    '11 Districts',            99.0)

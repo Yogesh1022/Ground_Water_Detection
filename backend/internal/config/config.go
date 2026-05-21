@@ -10,12 +10,13 @@ import (
 )
 
 type Config struct {
-	AppEnv   string
-	Server   ServerConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
-	Auth     AuthConfig
-	CORS     CORSConfig
+	AppEnv       string
+	Server       ServerConfig
+	Database     DatabaseConfig
+	Redis        RedisConfig
+	Auth         AuthConfig
+	MLServiceURL string
+	CORS         CORSConfig
 }
 
 type ServerConfig struct {
@@ -79,6 +80,7 @@ func Load() (Config, error) {
 			JWTSecret:   getEnv("JWT_SECRET", ""),
 			JWTTTLHours: getEnvAsInt("JWT_TTL_HOURS", 24),
 		},
+		MLServiceURL: getEnv("ML_SERVICE_URL", ""),
 		CORS: CORSConfig{
 			AllowOrigins:     splitCSV(getEnv("CORS_ALLOW_ORIGINS", "*")),
 			AllowMethods:     splitCSV(getEnv("CORS_ALLOW_METHODS", "GET,POST,PUT,PATCH,DELETE,OPTIONS")),

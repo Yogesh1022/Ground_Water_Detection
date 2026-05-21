@@ -17,6 +17,7 @@ func RegisterRoutes(
 	r *gin.Engine,
 	authHandler *AuthHandler,
 	jwtSecret string,
+	mlServiceURL string,
 	dbPool *pgxpool.Pool,
 	redisClient *redis.Client,
 ) {
@@ -27,7 +28,7 @@ func RegisterRoutes(
 	r.POST("/api/v1/auth/login", authHandler.Login)
 
 	commonUserGroup := r.Group("/api/v1/common-user")
-	commonUserHandler.RegisterRoutes(commonUserGroup, dbPool, redisClient)
+	commonUserHandler.RegisterRoutes(commonUserGroup, dbPool, redisClient, mlServiceURL)
 
 	adminGroup := r.Group("/api/v1/admin")
 	adminGroup.Use(middleware.Auth(jwtSecret), middleware.RequireRole("admin"))

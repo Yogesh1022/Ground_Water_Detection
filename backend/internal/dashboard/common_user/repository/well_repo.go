@@ -2,12 +2,25 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/Yogesh1022/Ground_Water_Detection/backend/internal/dashboard/common_user/dto"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type NearbyWell struct {
+	ID         int64
+	Name       string
+	District   string
+	Latitude   float64
+	Longitude  float64
+	DistanceKm float64
+	DepthMbgl  sql.NullFloat64
+	DepthLag1q sql.NullFloat64
+	DepthLag2q sql.NullFloat64
+}
 
 type WellRepo struct{ db *pgxpool.Pool }
 
@@ -154,4 +167,73 @@ func (r *WellRepo) GetDistrictStats(ctx context.Context) ([]dto.DistrictStatResp
 	}
 
 	return stats, nil
+}
+
+func (r *WellRepo) FindNearbyWells(ctx context.Context, latitude, longitude float64, radiusKm float64, limit int) ([]NearbyWell, error) {
+	rows, err := r.db.Query(
+		ctx,
+		`WITH nearest AS (
+			SELECT
+				w.id,
+				w.name,
+				w.district,
+				w.latitude,
+				w.longitude,
+				6371.0 * ACOS(
+					LEAST(1.0, GREATEST(-1.0,
+						COS(RADIANS($1)) * COS(RADIANS(w.latitude)) * COS(RADIANS(w.longitude) - RADIANS($2)) +
+						SIN(RADIANS($1)) * SIN(RADIANS(w.latitude))
+					))
+				) AS distance_km,
+				wr.depth_mbgl,
+				wr.depth_lag_1q,
+				wr.depth_lag_2q
+			FROM wells w
+			LEFT JOIN LATERAL (
+				SELECT depth_mbgl, depth_lag_1q, depth_lag_2q
+				FROM well_readings
+				WHERE well_id = w.id
+				ORDER BY reading_date DESC
+				LIMIT 1
+			) wr ON TRUE
+			WHERE w.is_active = TRUE
+		)
+		SELECT id, name, district, latitude, longitude, distance_km, depth_mbgl, depth_lag_1q, depth_lag_2q
+		FROM nearest
+		WHERE distance_km <= $3
+		ORDER BY distance_km ASC
+		LIMIT $4`,
+		latitude,
+		longitude,
+		radiusKm,
+		limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("find nearby wells: %w", err)
+	}
+	defer rows.Close()
+
+	nearby := make([]NearbyWell, 0, limit)
+	for rows.Next() {
+		var row NearbyWell
+		if err := rows.Scan(
+			&row.ID,
+			&row.Name,
+			&row.District,
+			&row.Latitude,
+			&row.Longitude,
+			&row.DistanceKm,
+			&row.DepthMbgl,
+			&row.DepthLag1q,
+			&row.DepthLag2q,
+		); err != nil {
+			return nil, fmt.Errorf("scan nearby well: %w", err)
+		}
+		nearby = append(nearby, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate nearby wells: %w", err)
+	}
+
+	return nearby, nil
 }

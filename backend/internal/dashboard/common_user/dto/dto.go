@@ -114,6 +114,8 @@ type PredictRequest struct {
 	TempC       float64 `json:"temperature_c"`
 	HumidityPct float64 `json:"humidity_pct"`
 	NDVI        float64 `json:"ndvi"`
+	Month       int     `json:"month" binding:"omitempty,min=1,max=12"`
+	Year        int     `json:"year" binding:"omitempty,min=1900"`
 }
 
 type MonthForecast struct {
@@ -132,17 +134,19 @@ type NearestWell struct {
 }
 
 type PredictResponse struct {
-	DepthMbgl          float64         `json:"depth_mbgl"`
-	RiskLevel          string          `json:"risk_level"`
-	ConfidencePct      float64         `json:"confidence_pct"`
-	PredictionPath     string          `json:"prediction_path"`
-	XGBoostDepth       float64         `json:"xgboost_depth"`
-	LSTMDepth          float64         `json:"lstm_depth"`
-	RandomForestDepth  float64         `json:"random_forest_depth"`
-	NearestWells       []NearestWell   `json:"nearest_wells"`
-	MultiMonthForecast []MonthForecast `json:"multi_month_forecast"`
-	Recommendation     string          `json:"recommendation"`
-	ActionableAdvice   []string        `json:"actionable_advice"`
+	DepthMbgl          float64            `json:"depth_mbgl"`
+	RiskLevel          string             `json:"risk_level"`
+	ConfidencePct      float64            `json:"confidence_pct"`
+	PredictionPath     string             `json:"prediction_path"`
+	XGBoostDepth       float64            `json:"xgboost_depth"`
+	LSTMDepth          float64            `json:"lstm_depth"`
+	RandomForestDepth  float64            `json:"random_forest_depth"`
+	NearestWells       []NearestWell      `json:"nearest_wells"`
+	MultiMonthForecast []MonthForecast    `json:"multi_month_forecast"`
+	Recommendation     string             `json:"recommendation"`
+	ActionableAdvice   []string           `json:"actionable_advice"`
+	ModelBreakdown     map[string]float64 `json:"model_breakdown,omitempty"`
+	EnsembleWeights    map[string]float64 `json:"ensemble_weights,omitempty"`
 }
 
 type CreateComplaintRequest struct {
@@ -176,35 +180,35 @@ type ComplaintListResponse struct {
 // GroundwaterReadings DTOs for CSV data endpoint
 type GroundwaterReadingQuery struct {
 	PaginationQuery
-	District  string    `form:"district"`
-	WellID    int64     `form:"well_id"`
-	StartDate string    `form:"start_date"` // YYYY-MM-DD
-	EndDate   string    `form:"end_date"`   // YYYY-MM-DD
-	SortBy    string    `form:"sort_by" default:"reading_date"`
-	SortOrder string    `form:"sort_order" default:"DESC"`
+	District  string `form:"district"`
+	WellID    int64  `form:"well_id"`
+	StartDate string `form:"start_date"` // YYYY-MM-DD
+	EndDate   string `form:"end_date"`   // YYYY-MM-DD
+	SortBy    string `form:"sort_by" default:"reading_date"`
+	SortOrder string `form:"sort_order" default:"DESC"`
 }
 
 type GroundwaterReadingResponse struct {
-	ID                 int64      `json:"id"`
-	WellID             int64      `json:"well_id"`
-	WellName           string     `json:"well_name"`
-	District           string     `json:"district"`
-	ReadingDate        time.Time  `json:"reading_date"`
-	DepthMbgl          *float64   `json:"depth_mbgl"`
-	RainfallMm         *float64   `json:"rainfall_mm"`
-	TemperatureAvg     *float64   `json:"temperature_avg"`
-	Humidity           *float64   `json:"humidity"`
-	Evapotranspiration *float64   `json:"evapotranspiration"` // et0_mm from DB
-	RainfallLag1m      *float64   `json:"rainfall_lag_1m"`    // rainfall_30d_mm from DB
-	RainfallLag2m      *float64   `json:"rainfall_lag_2m"`    // rainfall_90d_mm from DB
-	RainfallDeficit    *float64   `json:"rainfall_deficit"`
-	DepthLag1q         *float64   `json:"depth_lag_1q"`
-	DepthLag2q         *float64   `json:"depth_lag_2q"`
-	Month              int        `json:"month"`
-	Season             string     `json:"season"`
-	Latitude           float64    `json:"latitude"`
-	Longitude          float64    `json:"longitude"`
-	NDVI               *float64   `json:"ndvi"`
+	ID                 int64     `json:"id"`
+	WellID             int64     `json:"well_id"`
+	WellName           string    `json:"well_name"`
+	District           string    `json:"district"`
+	ReadingDate        time.Time `json:"reading_date"`
+	DepthMbgl          *float64  `json:"depth_mbgl"`
+	RainfallMm         *float64  `json:"rainfall_mm"`
+	TemperatureAvg     *float64  `json:"temperature_avg"`
+	Humidity           *float64  `json:"humidity"`
+	Evapotranspiration *float64  `json:"evapotranspiration"` // et0_mm from DB
+	RainfallLag1m      *float64  `json:"rainfall_lag_1m"`    // rainfall_30d_mm from DB
+	RainfallLag2m      *float64  `json:"rainfall_lag_2m"`    // rainfall_90d_mm from DB
+	RainfallDeficit    *float64  `json:"rainfall_deficit"`
+	DepthLag1q         *float64  `json:"depth_lag_1q"`
+	DepthLag2q         *float64  `json:"depth_lag_2q"`
+	Month              int       `json:"month"`
+	Season             string    `json:"season"`
+	Latitude           float64   `json:"latitude"`
+	Longitude          float64   `json:"longitude"`
+	NDVI               *float64  `json:"ndvi"`
 }
 
 type GroundwaterReadingListResponse struct {

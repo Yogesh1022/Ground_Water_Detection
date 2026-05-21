@@ -85,7 +85,7 @@ func main() {
 
 	authService := service.NewAuthService(dbPool, cfg.Auth.JWTSecret, cfg.Auth.JWTTTLHours)
 	authHandler := handler.NewAuthHandler(authService)
-	handler.RegisterRoutes(r, authHandler, cfg.Auth.JWTSecret, dbPool, redisClient)
+	handler.RegisterRoutes(r, authHandler, cfg.Auth.JWTSecret, cfg.MLServiceURL, dbPool, redisClient)
 	logger.Info("[HTTP] routes registered")
 
 	server := &http.Server{

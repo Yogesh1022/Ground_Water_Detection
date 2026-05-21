@@ -14,17 +14,17 @@ import (
 )
 
 type CommonUserHandler struct {
-	profileSvc                  *commonService.ProfileService
-	wellSvc                     *commonService.WellService
-	alertSvc                    *commonService.AlertService
-	districtSvc                 *commonService.DistrictService
-	complaintSvc                *commonService.ComplaintService
-	predictSvc                  *commonService.PredictService
-	groundwaterReadingSvc       *commonService.GroundwaterReadingService
-	cache                       *commonCache
+	profileSvc            *commonService.ProfileService
+	wellSvc               *commonService.WellService
+	alertSvc              *commonService.AlertService
+	districtSvc           *commonService.DistrictService
+	complaintSvc          *commonService.ComplaintService
+	predictSvc            *commonService.PredictService
+	groundwaterReadingSvc *commonService.GroundwaterReadingService
+	cache                 *commonCache
 }
 
-func NewCommonUserHandler(db *pgxpool.Pool, redisClient *redis.Client) *CommonUserHandler {
+func NewCommonUserHandler(db *pgxpool.Pool, redisClient *redis.Client, mlServiceURL string) *CommonUserHandler {
 	wellRepo := repository.NewWellRepo(db)
 	alertRepo := repository.NewAlertRepo(db)
 	complaintRepo := repository.NewComplaintRepo(db)
@@ -32,14 +32,14 @@ func NewCommonUserHandler(db *pgxpool.Pool, redisClient *redis.Client) *CommonUs
 	groundwaterReadingsRepo := repository.NewGroundwaterReadingsRepo(db)
 
 	return &CommonUserHandler{
-		profileSvc:              commonService.NewProfileService(),
-		wellSvc:                 commonService.NewWellService(wellRepo),
-		alertSvc:                commonService.NewAlertService(alertRepo),
-		districtSvc:             commonService.NewDistrictService(wellRepo),
-		complaintSvc:            commonService.NewComplaintService(complaintRepo),
-		predictSvc:              commonService.NewPredictService(predictionRepo),
-		groundwaterReadingSvc:   commonService.NewGroundwaterReadingService(groundwaterReadingsRepo),
-		cache:                   newCommonCache(redisClient),
+		profileSvc:            commonService.NewProfileService(),
+		wellSvc:               commonService.NewWellService(wellRepo),
+		alertSvc:              commonService.NewAlertService(alertRepo),
+		districtSvc:           commonService.NewDistrictService(wellRepo),
+		complaintSvc:          commonService.NewComplaintService(complaintRepo),
+		predictSvc:            commonService.NewPredictService(predictionRepo, wellRepo, mlServiceURL),
+		groundwaterReadingSvc: commonService.NewGroundwaterReadingService(groundwaterReadingsRepo),
+		cache:                 newCommonCache(redisClient),
 	}
 }
 
