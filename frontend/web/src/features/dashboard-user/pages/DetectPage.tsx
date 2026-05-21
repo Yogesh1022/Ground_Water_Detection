@@ -15,7 +15,61 @@ const chartOptions = {
   }
 };
 
-function riskByDepth(absDepth) {
+type RiskBand = {
+  risk: string;
+  color: string;
+  border: string;
+  bg: string;
+  msg: string;
+  cls: string;
+};
+
+type PredictFormState = {
+  latitude: string;
+  longitude: string;
+  rainfall_mm: string;
+  temperature_c: string;
+  humidity_pct: string;
+  ndvi: string;
+  month: string;
+  year: string;
+};
+
+type PredictPayloadOverrides = Partial<{
+  latitude: number;
+  longitude: number;
+  rainfall_mm: number;
+  temperature_c: number;
+  humidity_pct: number;
+  ndvi: number;
+  month: number;
+  year: number;
+}>;
+
+type PredictApiResponse = {
+  depth_mbgl?: number;
+  confidence_pct?: number;
+  multi_month_forecast?: Array<{ depth_mbgl?: number }>;
+  prediction_path?: string;
+};
+
+type DetectResult = {
+  lat: number;
+  lon: number;
+  depth: number;
+  conf: string;
+  rainfall: string;
+  predictionPath: string;
+  apr: number;
+  may: number;
+  jun: number;
+  mainRisk: RiskBand;
+  aprRisk: RiskBand;
+  mayRisk: RiskBand;
+  junRisk: RiskBand;
+};
+
+function riskByDepth(absDepth: number): RiskBand {
   if (absDepth > 65) {
     return {
       risk: "DANGER",
@@ -56,9 +110,107 @@ function riskByDepth(absDepth) {
   };
 }
 
+function formatPredictionPath(path: string): string {
+  if (path === "EXACT_WELL") {
+    return "Path 1 - Exact Well";
+  }
+  if (path === "KNN_IDW_TEMPORAL") {
+    return "Path 2 - KNN + IDW + Temporal";
+  }
+  if (path === "ENVIRONMENTAL_ONLY") {
+    return "Path 3 - Environmental Ensemble";
+  }
+  return path;
+}
+
 function DetectPage() {
+  const now = new Date();
+  const [form, setForm] = useState<PredictFormState>({
+    latitude: "",
+    longitude: "",
+    rainfall_mm: "",
+    temperature_c: "",
+    humidity_pct: "",
+    ndvi: "",
+    month: String(now.getMonth() + 1),
+    year: String(now.getFullYear())
+  });
   const [locationStatus, setLocationStatus] = useState("");
-  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<DetectResult | null>(null);
+
+  const setField = <K extends keyof PredictFormState>(field: K, value: PredictFormState[K]) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const buildPayload = (overrides: PredictPayloadOverrides = {}) => {
+    const latitude = Number(overrides.latitude ?? form.latitude);
+    const longitude = Number(overrides.longitude ?? form.longitude);
+    const rainfall = Number(overrides.rainfall_mm ?? form.rainfall_mm);
+    const temperature = Number(overrides.temperature_c ?? form.temperature_c);
+    const humidity = Number(overrides.humidity_pct ?? form.humidity_pct);
+    const ndvi = Number(overrides.ndvi ?? form.ndvi);
+    const month = Number(overrides.month ?? form.month);
+    const year = Number(overrides.year ?? form.year);
+
+    return {
+      latitude,
+      longitude,
+      rainfall_mm: Number.isFinite(rainfall) ? rainfall : 0,
+      temperature_c: Number.isFinite(temperature) ? temperature : 0,
+      humidity_pct: Number.isFinite(humidity) ? humidity : 0,
+      ndvi: Number.isFinite(ndvi) ? ndvi : 0,
+      month: Number.isFinite(month) ? month : now.getMonth() + 1,
+      year: Number.isFinite(year) ? year : now.getFullYear()
+    };
+  };
+
+  const runPrediction = async (overrides: PredictPayloadOverrides = {}) => {
+    const payload = buildPayload(overrides);
+
+    if (!Number.isFinite(payload.latitude) || !Number.isFinite(payload.longitude)) {
+      setLocationStatus("Enter latitude and longitude first, or use your current location.");
+      return;
+    }
+
+    setLoading(true);
+    setLocationStatus("Running prediction...");
+
+    try {
+      const prediction = (await predictDepth(payload)) as PredictApiResponse;
+      const depth = -Math.abs(Number(prediction?.depth_mbgl || 0));
+
+      const forecast = Array.isArray(prediction?.multi_month_forecast)
+        ? prediction.multi_month_forecast
+        : [];
+
+      const apr = -Math.abs(Number(forecast[0]?.depth_mbgl ?? prediction?.depth_mbgl ?? 0));
+      const may = -Math.abs(Number(forecast[1]?.depth_mbgl ?? forecast[0]?.depth_mbgl ?? prediction?.depth_mbgl ?? 0));
+      const jun = -Math.abs(Number(forecast[2]?.depth_mbgl ?? forecast[1]?.depth_mbgl ?? prediction?.depth_mbgl ?? 0));
+
+      setResult({
+        lat: payload.latitude,
+        lon: payload.longitude,
+        depth,
+        conf: String(Math.round(Number(prediction?.confidence_pct || 0))),
+        rainfall: payload.rainfall_mm > 0 ? `${payload.rainfall_mm.toFixed(1)} mm` : "Live model",
+        predictionPath: prediction?.prediction_path || "UNKNOWN",
+        apr,
+        may,
+        jun,
+        mainRisk: riskByDepth(Math.abs(depth)),
+        aprRisk: riskByDepth(Math.abs(apr)),
+        mayRisk: riskByDepth(Math.abs(may)),
+        junRisk: riskByDepth(Math.abs(jun))
+      });
+      setLocationStatus("Prediction ready.");
+    } catch {
+      setLocationStatus("Prediction service is unavailable right now.");
+      setResult(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const chartData = useMemo(() => {
     if (!result) return null;
@@ -134,39 +286,9 @@ function DetectPage() {
       async (p) => {
         const lat = Number(p.coords.latitude.toFixed(4));
         const lon = Number(p.coords.longitude.toFixed(4));
-
-        try {
-          const prediction = await predictDepth({ latitude: lat, longitude: lon });
-          const depth = -Math.abs(Number(prediction?.depth_mbgl || 0));
-
-          const forecast = Array.isArray(prediction?.multi_month_forecast)
-            ? prediction.multi_month_forecast
-            : [];
-
-          const apr = -Math.abs(Number(forecast[0]?.depth_mbgl ?? prediction?.depth_mbgl ?? 0));
-          const may = -Math.abs(Number(forecast[1]?.depth_mbgl ?? forecast[0]?.depth_mbgl ?? prediction?.depth_mbgl ?? 0));
-          const jun = -Math.abs(Number(forecast[2]?.depth_mbgl ?? forecast[1]?.depth_mbgl ?? prediction?.depth_mbgl ?? 0));
-
-          setResult({
-            lat,
-            lon,
-            depth,
-            conf: String(Math.round(Number(prediction?.confidence_pct || 0))),
-            rainfall: "Live model",
-            soil: "From model",
-            apr,
-            may,
-            jun,
-            mainRisk: riskByDepth(Math.abs(depth)),
-            aprRisk: riskByDepth(Math.abs(apr)),
-            mayRisk: riskByDepth(Math.abs(may)),
-            junRisk: riskByDepth(Math.abs(jun))
-          });
-          setLocationStatus("Location found. Live water analysis ready.");
-        } catch {
-          setLocationStatus("Location found, but prediction service is unavailable right now.");
-          setResult(null);
-        }
+        setField("latitude", String(lat));
+        setField("longitude", String(lon));
+        await runPrediction({ latitude: lat, longitude: lon });
       },
       () => {
         setLocationStatus("Could not get location. Please allow location access in your browser and try again.");
@@ -180,12 +302,57 @@ function DetectPage() {
       <div className="card">
         <div className="detect-hero">
           <h2 className="gradient-text">Check Water Level at Your Location</h2>
-          <p>Press the button below, we will use your phone location to check nearby water level.</p>
+          <p>Use your location or fill the form below to send the full prediction payload to the model service.</p>
+        </div>
+
+        <div className="card inner-card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <div className="card-title">
+              <span className="card-dot txt-cyan-bg" /> Prediction Inputs
+            </div>
+          </div>
+          <div className="grid-2">
+            <label className="field-block">
+              <span>Latitude</span>
+              <input value={form.latitude} onChange={(e) => setField("latitude", e.target.value)} placeholder="20.45" />
+            </label>
+            <label className="field-block">
+              <span>Longitude</span>
+              <input value={form.longitude} onChange={(e) => setField("longitude", e.target.value)} placeholder="78.91" />
+            </label>
+            <label className="field-block">
+              <span>Rainfall (mm)</span>
+              <input value={form.rainfall_mm} onChange={(e) => setField("rainfall_mm", e.target.value)} placeholder="32" />
+            </label>
+            <label className="field-block">
+              <span>Temperature (°C)</span>
+              <input value={form.temperature_c} onChange={(e) => setField("temperature_c", e.target.value)} placeholder="31" />
+            </label>
+            <label className="field-block">
+              <span>Humidity (%)</span>
+              <input value={form.humidity_pct} onChange={(e) => setField("humidity_pct", e.target.value)} placeholder="64" />
+            </label>
+            <label className="field-block">
+              <span>NDVI</span>
+              <input value={form.ndvi} onChange={(e) => setField("ndvi", e.target.value)} placeholder="0.42" />
+            </label>
+            <label className="field-block">
+              <span>Month</span>
+              <input value={form.month} onChange={(e) => setField("month", e.target.value)} placeholder="5" />
+            </label>
+            <label className="field-block">
+              <span>Year</span>
+              <input value={form.year} onChange={(e) => setField("year", e.target.value)} placeholder="2026" />
+            </label>
+          </div>
         </div>
 
         <div className="detect-action-wrap">
-          <button className="btn btn-primary btn-lg detect-btn" onClick={useMyLocation}>
-            <Crosshair size={22} /> Check My Water Level
+          <button className="btn btn-primary btn-lg detect-btn" onClick={useMyLocation} disabled={loading}>
+            <Crosshair size={22} /> {loading ? "Checking..." : "Use My Location"}
+          </button>
+          <button className="btn btn-secondary btn-lg detect-btn" onClick={() => runPrediction()} disabled={loading}>
+            Run Prediction
           </button>
           <div className="location-status">{locationStatus}</div>
         </div>
@@ -206,8 +373,8 @@ function DetectPage() {
                   <div className="result-stat-label">Recent Rainfall</div>
                 </div>
                 <div className="result-stat">
-                  <div className="result-stat-val txt-purple">{result.soil}</div>
-                  <div className="result-stat-label">Soil Type</div>
+                  <div className="result-stat-val txt-purple">{formatPredictionPath(result.predictionPath)}</div>
+                  <div className="result-stat-label">Prediction Path</div>
                 </div>
               </div>
             </div>
@@ -262,7 +429,7 @@ function DetectPage() {
                   </div>
                 </div>
                 <div className="chart-wrap high">
-                  <Line data={chartData.line} options={chartOptions} />
+                  {chartData ? <Line data={chartData.line} options={chartOptions} /> : null}
                 </div>
               </div>
 
@@ -273,21 +440,23 @@ function DetectPage() {
                   </div>
                 </div>
                 <div className="chart-wrap high">
-                  <Bar
-                    data={chartData.bar}
-                    options={{
-                      ...chartOptions,
-                      indexAxis: "y",
-                      plugins: { legend: { display: false } },
-                      scales: {
-                        ...chartOptions.scales,
-                        x: {
-                          ...chartOptions.scales.x,
-                          title: { display: true, text: "How much it matters", color: "#64748b" }
+                  {chartData ? (
+                    <Bar
+                      data={chartData.bar}
+                      options={{
+                        ...chartOptions,
+                        indexAxis: "y",
+                        plugins: { legend: { display: false } },
+                        scales: {
+                          ...chartOptions.scales,
+                          x: {
+                            ...chartOptions.scales.x,
+                            title: { display: true, text: "How much it matters", color: "#64748b" }
+                          }
                         }
-                      }
-                    }}
-                  />
+                      }}
+                    />
+                  ) : null}
                 </div>
               </div>
             </div>
