@@ -130,12 +130,7 @@ export default function LoginPage() {
     const authBaseUrl = (import.meta.env.VITE_AUTH_BASE_URL || "/api/v1/auth").replace(/\/$/, "");
 
     const rawId = loginId.trim();
-    const derivedEmail =
-      rawId.includes("@")
-        ? rawId.toLowerCase()
-        : role === "admin" && rawId.toLowerCase() === "admin"
-          ? "admin@aquavidarbha.in"
-          : rawId;
+    const derivedEmail = rawId.includes("@") ? rawId.toLowerCase() : rawId;
 
     if (!derivedEmail.includes("@")) {
       setErrorMessage("Please enter a registered email ID.");
@@ -276,30 +271,6 @@ export default function LoginPage() {
               <span>{isSubmitting ? "Signing In..." : role === "gov" ? "Sign In as Officer" : "Sign In as Admin"}</span>
             </button>
           </form>
-
-          <div className="demo-creds">
-            <strong>Backend Credentials</strong>
-            <div className="demo-grid">
-              <div>
-                <div className="demo-title demo-gov">GOV OFFICER</div>
-                <div>
-                  ID: <span className="mono">Use gov user email</span>
-                </div>
-                <div>
-                  Pass: <span className="mono">Created by Admin</span>
-                </div>
-              </div>
-              <div>
-                <div className="demo-title demo-admin">ADMIN</div>
-                <div>
-                  ID: <span className="mono">admin@aquavidarbha.in</span>
-                </div>
-                <div>
-                  Pass: <span className="mono">Admin@12345</span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div className="login-footer">

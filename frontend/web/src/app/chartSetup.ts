@@ -9,7 +9,8 @@ import {
   Title,
   Tooltip,
   BarElement,
-  ArcElement
+  ArcElement,
+  ScatterController
 } from "chart.js";
 
 ChartJS.register(
@@ -22,5 +23,6 @@ ChartJS.register(
   Legend,
   Title,
   BarElement,
-  ArcElement
+  ArcElement,
+  ScatterController
 );
