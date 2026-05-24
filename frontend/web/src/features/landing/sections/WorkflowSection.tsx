@@ -1,7 +1,7 @@
 export function WorkflowSection() {
   const steps = [
     { num: '1', title: 'Input Data', desc: 'Enter district & date range' },
-    { num: '2', title: 'Process', desc: 'Run 10-model ensemble' },
+    { num: '2', title: 'Process', desc: 'Run 7-model ensemble' },
     { num: '3', title: 'Predict', desc: 'Get 90-day forecast' },
     { num: '4', title: 'Visualize', desc: 'View crisis maps & alerts' },
   ];

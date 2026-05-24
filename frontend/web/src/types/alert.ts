@@ -1,5 +1,6 @@
 export interface Alert {
   id: string;
+  district?: string;
   title: string;
   message: string;
   time: string;

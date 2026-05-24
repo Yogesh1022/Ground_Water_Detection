@@ -10,8 +10,8 @@ export function FeaturesSection() {
       color: 'cyan',
     },
     {
-      title: '10-Model Ensemble',
-      description: 'XGBoost + LSTM + CNN-LSTM + GRU + 1D-CNN — weighted ensemble achieves R² = 0.92.',
+      title: '7-Model Ensemble',
+      description: 'XGBoost + Random Forest + VAR + LSTM + GRU + 1D-CNN + CNN-LSTM — weighted ensemble achieves R² = 0.92.',
       icon: Brain,
       span: 1,
       color: 'purple',

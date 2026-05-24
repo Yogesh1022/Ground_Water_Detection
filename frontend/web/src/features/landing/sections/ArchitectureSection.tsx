@@ -27,7 +27,7 @@ export function ArchitectureSection() {
             {
               title: 'Prediction Engine',
               icon: Brain,
-              items: ['Feature eng', '10 models', 'Ensembling', 'R² validation'],
+              items: ['Feature eng', '7 models', 'Ensembling', 'R² validation'],
               color: 'purple',
             },
             {

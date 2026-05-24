@@ -89,7 +89,7 @@ const navItems: NavItem[] = [
   { key: "users", label: "Manage Citizens", icon: Users, section: "User Management" },
   { key: "officers", label: "Manage Officers", icon: Landmark, section: "User Management" },
   { key: "adduser", label: "Add User / Officer", icon: UserPlus, section: "User Management" },
-  { key: "mlmodels", label: "ML Model Stats", icon: Brain, section: "Data & ML" },
+  { key: "mlmodels", label: "Model Registry & Performance", icon: Brain, section: "Data & ML" },
   { key: "dataoverview", label: "Data Overview", icon: Database, section: "Data & ML" },
   { key: "activitylog", label: "Activity Logs", icon: ScrollText, section: "System" },
   { key: "settings", label: "Settings", icon: SlidersHorizontal, section: "System" }
@@ -102,7 +102,7 @@ const pageTitle: Record<AdminPage, string> = {
   users: "Manage Citizens",
   officers: "Manage Officers",
   adduser: "Add User / Officer",
-  mlmodels: "ML Model Stats",
+  mlmodels: "Model Registry & Performance",
   dataoverview: "Data Overview",
   activitylog: "Activity Logs",
   settings: "Settings"
@@ -389,24 +389,47 @@ export default function AdminDashboardFeaturePage() {
     [dataSources]
   );
 
+  const sortedModels = useMemo(
+    () =>
+      models
+        .slice()
+        .sort((a, b) => new Date(b.trained_at || 0).getTime() - new Date(a.trained_at || 0).getTime()),
+    [models]
+  );
+
+  const modelSummary = useMemo(() => {
+    const total = sortedModels.length;
+    const production = sortedModels.filter((model) => String(model.status || "").toLowerCase() === "production").length;
+    const avgR2 = total > 0 ? sortedModels.reduce((sum, model) => sum + Number(model.r2_score || 0), 0) / total : 0;
+    const avgFeatures = total > 0 ? sortedModels.reduce((sum, model) => sum + Number(model.feature_count || 0), 0) / total : 0;
+    const totalTrainingRows = sortedModels.reduce((sum, model) => sum + Number(model.training_rows || 0), 0);
+    const latestTrainedAt = sortedModels[0]?.trained_at || "";
+
+    return {
+      total,
+      production,
+      avgR2,
+      avgFeatures,
+      totalTrainingRows,
+      latestTrainedAt
+    };
+  }, [sortedModels]);
+
   const modelTrendData = useMemo(
     () => ({
       labels:
-        models.length > 0
-          ? models
+        sortedModels.length > 0
+          ? sortedModels
               .slice()
-              .sort((a, b) => new Date(a.trained_at || 0).getTime() - new Date(b.trained_at || 0).getTime())
+              .reverse()
               .map((m) => (m.version ? `${m.model_name} ${m.version}` : m.model_name))
           : ["No Data"],
       datasets: [
         {
           label: "Best R²",
           data:
-            models.length > 0
-              ? models
-                  .slice()
-                  .sort((a, b) => new Date(a.trained_at || 0).getTime() - new Date(b.trained_at || 0).getTime())
-                  .map((m) => Number(m.r2_score || 0))
+            sortedModels.length > 0
+              ? sortedModels.slice().reverse().map((m) => Number(m.r2_score || 0))
               : [0],
           borderColor: "#a855f7",
           backgroundColor: "rgba(168,85,247,.08)",
@@ -416,22 +439,22 @@ export default function AdminDashboardFeaturePage() {
         }
       ]
     }),
-    [models]
+    [sortedModels]
   );
 
   const modelCompareData = useMemo(
     () => ({
-      labels: models.length > 0 ? models.map((item) => item.model_name) : ["No Models"],
+      labels: sortedModels.length > 0 ? sortedModels.map((item) => item.model_name) : ["No Models"],
       datasets: [
         {
           label: "R² Score",
-          data: models.length > 0 ? models.map((item) => Number(item.r2_score || 0)) : [0],
+          data: sortedModels.length > 0 ? sortedModels.map((item) => Number(item.r2_score || 0)) : [0],
           backgroundColor: ["rgba(52,211,153,.6)", "rgba(168,85,247,.6)", "rgba(34,211,238,.6)", "rgba(251,191,36,.6)"],
           borderRadius: 8
         }
       ]
     }),
-    [models]
+    [sortedModels]
   );
 
   const roleFilter = activePage === "officers" ? "gov" : activePage === "users" ? "citizen" : "";
@@ -785,8 +808,8 @@ export default function AdminDashboardFeaturePage() {
           </section>
           <section className="adm-card adm-stat-card">
             <div className="adm-stat-value tone-purple">ONLINE</div>
-            <div className="adm-stat-title">ML Model Status</div>
-            <div className="adm-stat-sub adm-mono">Active models: {models.length || 0}</div>
+            <div className="adm-stat-title">Model Registry</div>
+            <div className="adm-stat-sub adm-mono">Registry rows: {models.length || 0}</div>
           </section>
         </div>
       </>
@@ -1265,9 +1288,14 @@ export default function AdminDashboardFeaturePage() {
         return (
           <>
             <div className="adm-grid-3">
-              <article className="adm-kpi"><div className="adm-kpi-value tone-green">{models[0]?.r2_score?.toFixed(3) || "0.000"}</div><div className="adm-kpi-label">Top Model R²</div></article>
-              <article className="adm-kpi"><div className="adm-kpi-value tone-cyan">{models[0]?.rmse?.toFixed(2) || "0.00"}</div><div className="adm-kpi-label">Top Model RMSE</div></article>
-              <article className="adm-kpi"><div className="adm-kpi-value tone-purple">{models.length}</div><div className="adm-kpi-label">Registered Models</div></article>
+              <article className="adm-kpi"><div className="adm-kpi-value tone-green">{modelSummary.avgR2.toFixed(3)}</div><div className="adm-kpi-label">Avg R²</div></article>
+              <article className="adm-kpi"><div className="adm-kpi-value tone-cyan">{modelSummary.totalTrainingRows.toLocaleString()}</div><div className="adm-kpi-label">Training Rows</div></article>
+              <article className="adm-kpi"><div className="adm-kpi-value tone-purple">{modelSummary.total}</div><div className="adm-kpi-label">Registered Models</div></article>
+            </div>
+            <div className="adm-grid-3">
+              <article className="adm-kpi"><div className="adm-kpi-value tone-amber">{modelSummary.production}</div><div className="adm-kpi-label">Production Models</div></article>
+              <article className="adm-kpi"><div className="adm-kpi-value tone-blue">{modelSummary.avgFeatures.toFixed(0)}</div><div className="adm-kpi-label">Avg Feature Count</div></article>
+              <article className="adm-kpi"><div className="adm-kpi-value tone-green">{modelSummary.latestTrainedAt ? new Date(modelSummary.latestTrainedAt).toLocaleDateString() : "N/A"}</div><div className="adm-kpi-label">Latest Training</div></article>
             </div>
             <div className="adm-grid-2">
               <section className="adm-card">
@@ -1281,25 +1309,29 @@ export default function AdminDashboardFeaturePage() {
             </div>
             <section className="adm-card">
               <div className="adm-card-head"><Database size={16} className="adm-head-icon tone-blue" /> Model Registry</div>
+              <div className="adm-card-note">Rows come from the PostgreSQL <span className="adm-mono">ml_model_registry</span> table seeded from saved training artifacts.</div>
               {modelsError ? <div className="adm-message adm-error">{modelsError}</div> : null}
               {modelsLoading ? (
                 <div className="adm-inline-loader"><Loader2 size={18} className="spin" /> Loading models...</div>
               ) : (
                 <table className="adm-table">
-                  <thead><tr><th>Model</th><th>Version</th><th>R²</th><th>RMSE</th><th>MAE</th><th>Trained On</th><th>Status</th></tr></thead>
+                  <thead><tr><th>Model</th><th>Version</th><th>Status</th><th>R²</th><th>RMSE</th><th>MAE</th><th>Training Rows</th><th>Features</th><th>Trained On</th><th>Notes</th></tr></thead>
                   <tbody>
-                    {models.map((model) => (
+                    {sortedModels.map((model) => (
                       <tr key={model.id}>
                         <td>{model.model_name}</td>
                         <td>{model.version || "-"}</td>
+                        <td><span className={`adm-status ${model.status?.toLowerCase() === "production" ? "s-active" : model.status?.toLowerCase() === "backup" ? "s-warn" : "s-inactive"}`}>{model.status || "unknown"}</span></td>
                         <td>{model.r2_score ?? "-"}</td>
                         <td>{model.rmse ?? "-"}</td>
                         <td>{model.mae ?? "-"}</td>
+                        <td>{Number(model.training_rows || 0).toLocaleString()}</td>
+                        <td>{model.feature_count ?? "-"}</td>
                         <td>{model.trained_at ? new Date(model.trained_at).toLocaleDateString() : "-"}</td>
-                        <td><span className={`adm-status ${model.status?.toLowerCase() === "production" ? "s-active" : "s-warn"}`}>{model.status || "unknown"}</span></td>
+                        <td>{model.notes || "-"}</td>
                       </tr>
                     ))}
-                    {models.length === 0 ? <tr><td colSpan={7}>No model data available.</td></tr> : null}
+                    {sortedModels.length === 0 ? <tr><td colSpan={10}>No registry rows found. Seed <span className="adm-mono">ml_model_registry</span> from saved artifacts first.</td></tr> : null}
                   </tbody>
                 </table>
               )}

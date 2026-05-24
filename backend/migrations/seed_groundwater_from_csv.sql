@@ -37,6 +37,29 @@ CREATE TEMP TABLE stg_groundwater_csv (
 
 \copy stg_groundwater_csv (depth_mbgl, rainfall_mm, temperature_avg, humidity, evapotranspiration, soil_moisture_index, rainfall_lag_1m, rainfall_lag_2m, rainfall_lag_3m, rainfall_rolling_3m, rainfall_rolling_6m, rainfall_deficit, cumulative_deficit, temp_rainfall_ratio, depth_lag_1q, depth_lag_2q, depth_change_rate, month, season_encoded, district_encoded, latitude, longitude, elevation_m, slope_degree, soil_type_encoded, ndvi) FROM '/tmp/vidarbha_groundwater_model_ready.csv' WITH (FORMAT csv, HEADER true)
 
+CREATE TEMP TABLE district_lookup (
+    district_code INT PRIMARY KEY,
+    district_name TEXT NOT NULL
+);
+
+INSERT INTO district_lookup (district_code, district_name) VALUES
+    (0, 'Akola'),
+    (1, 'Amravati'),
+    (2, 'Bhandara'),
+    (3, 'Buldhana'),
+    (4, 'Chandrapur'),
+    (5, 'Gadchiroli'),
+    (6, 'Gondia'),
+    (7, 'Nagpur'),
+    (8, 'Wardha'),
+    (9, 'Washim'),
+    (10, 'Yavatmal');
+
+UPDATE wells w
+SET district = d.district_name
+FROM district_lookup d
+WHERE w.district = 'District_' || d.district_code::TEXT;
+
 WITH well_points AS (
     SELECT
         MIN(src_row) AS first_src_row,
@@ -62,7 +85,7 @@ INSERT INTO wells (
 )
 SELECT
     'VID_' || LPAD(ROW_NUMBER() OVER (ORDER BY first_src_row)::TEXT, 4, '0') AS name,
-    'District_' || district_code::TEXT AS district,
+    COALESCE(district_lookup.district_name, 'Unknown') AS district,
     latitude,
     longitude,
     elevation_m,
@@ -73,6 +96,7 @@ SELECT
     END,
     TRUE
 FROM well_points
+LEFT JOIN district_lookup ON district_lookup.district_code = well_points.district_code
 WHERE NOT EXISTS (
     SELECT 1
     FROM wells w
