@@ -45,6 +45,7 @@ frontend/web/.env*.local
 
 # Saved models (large binary files)
 saved_models/
+backend/models/temporal/*.pkl
 
 # Data files (large CSVs)
 data/*.csv

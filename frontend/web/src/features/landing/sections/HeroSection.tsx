@@ -49,7 +49,7 @@ export function HeroSection() {
           </h1>
 
           <p className="text-lg text-slate-400 leading-relaxed mb-8 max-w-xl">
-            Harness 10 ML/DL models, 650+ monitoring wells, and 15 years of satellite data to forecast groundwater depletion 90 days in advance across 11 Vidarbha districts.
+            Harness 7 ML/DL models, 650+ monitoring wells, and 15 years of satellite data to forecast groundwater depletion 90 days in advance across 11 Vidarbha districts.
           </p>
 
           <div className="flex flex-wrap gap-4 mb-12">
@@ -69,7 +69,7 @@ export function HeroSection() {
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { value: '10', label: 'ML/DL Models', color: 'cyan' },
+              { value: '7', label: 'ML/DL Models', color: 'cyan' },
               { value: '650+', label: 'Wells', color: 'purple' },
               { value: '15', label: 'Years Data', color: 'green' },
               { value: '11', label: 'Districts', color: 'amber' },

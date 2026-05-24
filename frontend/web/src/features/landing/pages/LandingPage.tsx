@@ -244,7 +244,7 @@ export default function LandingPage() {
               <span className="typewriter">{typed}</span>
             </h1>
             <p>
-              Harness 10 ML/DL models, 650+ monitoring wells, and 15 years of satellite data to forecast groundwater
+              Harness 7 ML/DL models, 650+ monitoring wells, and 15 years of satellite data to forecast groundwater
               depletion 90 days in advance across 11 Vidarbha districts.
             </p>
             <div className="hero-buttons">
@@ -257,7 +257,7 @@ export default function LandingPage() {
             </div>
             <div className="hero-stats">
               {[
-                { value: '10', label: 'ML/DL Models', color: 'cyan' },
+                { value: '7', label: 'ML/DL Models', color: 'cyan' },
                 { value: '650+', label: 'Wells', color: 'purple' },
                 { value: '15', label: 'Years Data', color: 'green' },
                 { value: '11', label: 'Districts', color: 'amber' },
@@ -303,8 +303,8 @@ export default function LandingPage() {
               <div className="card-icon purple">
                 <Brain size={24} />
               </div>
-              <h3>10-Model Ensemble</h3>
-              <p>XGBoost + LSTM + CNN-LSTM + GRU + 1D-CNN — weighted ensemble achieves R² = 0.92.</p>
+              <h3>7-Model Ensemble</h3>
+              <p>XGBoost + Random Forest + VAR + LSTM + GRU + 1D-CNN + CNN-LSTM — weighted ensemble achieves R² = 0.92.</p>
             </div>
             <div className="bento-card glass green">
               <div className="card-icon green">
@@ -373,7 +373,7 @@ export default function LandingPage() {
                 <h3 style={{ fontSize: '1.2rem', fontWeight: '700' }}>Prediction Engine</h3>
               </div>
               <ul style={{ listStyle: 'none' }}>
-                {['Feature eng', '10 models', 'Ensembling', 'R² validation'].map((item, i) => (
+                {['Feature eng', '7 models', 'Ensembling', 'R² validation'].map((item, i) => (
                   <li key={i} style={{ fontSize: '0.85rem', color: 'var(--text-dim)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--neon-purple)' }} />{item}
                   </li>
@@ -414,7 +414,7 @@ export default function LandingPage() {
           <div className="workflow-steps">
             {[
               { num: '1', title: 'Input Data', desc: 'Enter district & date range' },
-              { num: '2', title: 'Process', desc: 'Run 10-model ensemble' },
+              { num: '2', title: 'Process', desc: 'Run 7-model ensemble' },
               { num: '3', title: 'Predict', desc: 'Get 90-day forecast' },
               { num: '4', title: 'Visualize', desc: 'View crisis maps & alerts' },
             ].map((step, i) => (

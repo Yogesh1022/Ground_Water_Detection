@@ -104,6 +104,9 @@ export interface ModelItem {
   r2_score: number;
   rmse: number;
   mae: number;
+  training_rows: number;
+  feature_count: number;
+  notes: string;
   trained_at: string;
 }
 
@@ -138,6 +141,44 @@ export interface AuditLogEntry {
 export interface AuditLogResponse {
   data: AuditLogEntry[];
   meta: PagedMeta;
+}
+
+const DISTRICT_NAMES = [
+  "Akola",
+  "Amravati",
+  "Bhandara",
+  "Buldhana",
+  "Chandrapur",
+  "Gadchiroli",
+  "Gondia",
+  "Nagpur",
+  "Wardha",
+  "Washim",
+  "Yavatmal"
+];
+
+function normalizeDistrictName(value?: string): string {
+  const district = String(value || "").trim();
+  const match = district.match(/^District_(\d+)$/i);
+  if (!match) return district;
+
+  const index = Number(match[1]);
+  if (!Number.isInteger(index) || index < 0 || index >= DISTRICT_NAMES.length) {
+    return district;
+  }
+
+  return DISTRICT_NAMES[index];
+}
+
+function normalizeDistrictField<T extends { district?: string }>(value: T): T {
+  return {
+    ...value,
+    district: normalizeDistrictName(value.district)
+  };
+}
+
+function normalizeDistrictArray<T extends { district?: string }>(rows: T[] | undefined | null): T[] {
+  return Array.isArray(rows) ? rows.map(normalizeDistrictField) : [];
 }
 
 type QueryValue = string | number | boolean | undefined;
@@ -203,19 +244,22 @@ export function getAdminOverview(): Promise<AdminOverviewResponse> {
 }
 
 export function listAdminUsers(query: RequestOptions["query"] = {}): Promise<ListUsersResponse> {
-  return adminRequest<ListUsersResponse>("GET", "/users", { query });
+  return adminRequest<ListUsersResponse>("GET", "/users", { query }).then((response) => ({
+    ...response,
+    data: normalizeDistrictArray(response.data)
+  }));
 }
 
 export function getAdminUser(userId: number): Promise<AdminUser> {
-  return adminRequest<AdminUser>("GET", `/users/${userId}`);
+  return adminRequest<AdminUser>("GET", `/users/${userId}`).then(normalizeDistrictField);
 }
 
 export function createAdminUser(payload: CreateUserPayload): Promise<AdminUser> {
-  return adminRequest<AdminUser>("POST", "/users", { body: payload });
+  return adminRequest<AdminUser>("POST", "/users", { body: payload }).then(normalizeDistrictField);
 }
 
 export function updateAdminUser(userId: number, payload: UpdateUserPayload): Promise<AdminUser> {
-  return adminRequest<AdminUser>("PUT", `/users/${userId}`, { body: payload });
+  return adminRequest<AdminUser>("PUT", `/users/${userId}`, { body: payload }).then(normalizeDistrictField);
 }
 
 export function deleteAdminUser(userId: number): Promise<{ message: string }> {
@@ -231,11 +275,14 @@ export function activateAdminUser(userId: number): Promise<{ message: string }> 
 }
 
 export function listAdminWells(query: RequestOptions["query"] = {}): Promise<ListWellsResponse> {
-  return adminRequest<ListWellsResponse>("GET", "/wells", { query });
+  return adminRequest<ListWellsResponse>("GET", "/wells", { query }).then((response) => ({
+    ...response,
+    data: normalizeDistrictArray(response.data)
+  }));
 }
 
 export function createAdminWell(payload: CreateWellPayload): Promise<WellItem> {
-  return adminRequest<WellItem>("POST", "/wells", { body: payload });
+  return adminRequest<WellItem>("POST", "/wells", { body: payload }).then(normalizeDistrictField);
 }
 
 export function getAdminActivityLog(query: RequestOptions["query"] = {}): Promise<AuditLogResponse> {

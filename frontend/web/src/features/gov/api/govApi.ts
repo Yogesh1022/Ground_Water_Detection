@@ -222,6 +222,44 @@ export interface ActivityLogResponse {
   meta: PagedMeta;
 }
 
+const DISTRICT_NAMES = [
+  "Akola",
+  "Amravati",
+  "Bhandara",
+  "Buldhana",
+  "Chandrapur",
+  "Gadchiroli",
+  "Gondia",
+  "Nagpur",
+  "Wardha",
+  "Washim",
+  "Yavatmal"
+];
+
+function normalizeDistrictName(value?: string): string {
+  const district = String(value || "").trim();
+  const match = district.match(/^District_(\d+)$/i);
+  if (!match) return district;
+
+  const index = Number(match[1]);
+  if (!Number.isInteger(index) || index < 0 || index >= DISTRICT_NAMES.length) {
+    return district;
+  }
+
+  return DISTRICT_NAMES[index];
+}
+
+function normalizeDistrictField<T extends { district?: string }>(value: T): T {
+  return {
+    ...value,
+    district: normalizeDistrictName(value.district)
+  };
+}
+
+function normalizeDistrictArray<T extends { district?: string }>(rows: T[] | undefined | null): T[] {
+  return Array.isArray(rows) ? rows.map(normalizeDistrictField) : [];
+}
+
 type QueryValue = string | number | boolean | undefined | null;
 type RequestOptions = {
   query?: ComplaintListQuery | Record<string, QueryValue>;
@@ -280,19 +318,25 @@ async function govRequest<T>(method: string, path: string, options: RequestOptio
 }
 
 export async function getGovProfile(): Promise<GovProfile> {
-  return govRequest<GovProfile>("GET", "/me");
+  return govRequest<GovProfile>("GET", "/me").then(normalizeDistrictField);
 }
 
 export async function getGovOverview(): Promise<GovOverview> {
-  return govRequest<GovOverview>("GET", "/overview");
+  return govRequest<GovOverview>("GET", "/overview").then((response) => ({
+    ...normalizeDistrictField(response),
+    crisis_series: normalizeDistrictArray(response.crisis_series)
+  }));
 }
 
 export async function listGovRequests(query: ComplaintListQuery = {}): Promise<{ data: GovComplaint[]; meta: PagedMeta }> {
-  return govRequest<{ data: GovComplaint[]; meta: PagedMeta }>("GET", "/requests", { query });
+  return govRequest<{ data: GovComplaint[]; meta: PagedMeta }>("GET", "/requests", { query }).then((response) => ({
+    ...response,
+    data: normalizeDistrictArray(response.data)
+  }));
 }
 
 export async function getGovRequest(requestId: number): Promise<GovComplaint> {
-  return govRequest<GovComplaint>("GET", `/requests/${requestId}`);
+  return govRequest<GovComplaint>("GET", `/requests/${requestId}`).then(normalizeDistrictField);
 }
 
 export async function assignGovRequest(requestId: number, payload: { officer_id: number; note?: string }): Promise<{ message: string }> {
@@ -322,11 +366,17 @@ export async function exportGovRequestsCSV(query: ComplaintListQuery = {}): Prom
 }
 
 export async function getGovDistrictAnalytics(): Promise<DistrictAnalyticsResponse> {
-  return govRequest<DistrictAnalyticsResponse>("GET", "/districts/analytics");
+  return govRequest<DistrictAnalyticsResponse>("GET", "/districts/analytics").then((response) => ({
+    ...normalizeDistrictField(response),
+    monthly_trend: response.monthly_trend
+  }));
 }
 
 export async function getGovDistrictSummary(): Promise<{ data: GovDistrictSummaryRow[] }> {
-  return govRequest<{ data: GovDistrictSummaryRow[] }>("GET", "/districts/summary");
+  return govRequest<{ data: GovDistrictSummaryRow[] }>("GET", "/districts/summary").then((response) => ({
+    ...response,
+    data: normalizeDistrictArray(response.data)
+  }));
 }
 
 export async function getGovRainfallDepth(): Promise<{ data: GovRainfallDepthPoint[] }> {
@@ -334,7 +384,10 @@ export async function getGovRainfallDepth(): Promise<{ data: GovRainfallDepthPoi
 }
 
 export async function getGovForecast(): Promise<ForecastResponse> {
-  return govRequest<ForecastResponse>("GET", "/forecast");
+  return govRequest<ForecastResponse>("GET", "/forecast").then((response) => ({
+    ...normalizeDistrictField(response),
+    forecast: response.forecast
+  }));
 }
 
 export async function getGovForecastLong(): Promise<{ data: GovForecast90Point[] }> {
@@ -346,11 +399,17 @@ export async function getGovForecastShap(): Promise<{ data: GovShapFeature[] }> 
 }
 
 export async function getGovCrisisZones(): Promise<{ data: GovCrisisZone[] }> {
-  return govRequest<{ data: GovCrisisZone[] }>("GET", "/crisis-zones");
+  return govRequest<{ data: GovCrisisZone[] }>("GET", "/crisis-zones").then((response) => ({
+    ...response,
+    data: normalizeDistrictArray(response.data)
+  }));
 }
 
 export async function listGovTankers(): Promise<{ data: GovTankerRoute[] }> {
-  return govRequest<{ data: GovTankerRoute[] }>("GET", "/tankers");
+  return govRequest<{ data: GovTankerRoute[] }>("GET", "/tankers").then((response) => ({
+    ...response,
+    data: normalizeDistrictArray(response.data)
+  }));
 }
 
 export async function createGovTanker(payload: CreateTankerRequest): Promise<GovTankerRoute> {

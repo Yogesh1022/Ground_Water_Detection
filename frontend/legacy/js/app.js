@@ -404,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---- 10. District Bar Chart ----
   function renderDistrictBarChart() {
-    const districts = ['Amr','Nag','Yav','Ako','Was','Bul','War','Cha','Gad','Bha','Gon'];
+    const districts = ['Amravati', 'Nagpur', 'Yavatmal', 'Akola', 'Washim', 'Buldhana', 'Wardha', 'Chandrapur', 'Gadchiroli', 'Bhandara', 'Gondia'];
     const depths = [6.8, 5.4, 9.1, 7.6, 8.3, 6.2, 5.9, 7.0, 4.8, 5.1, 5.5];
     getOrCreate('districtBarChart', {
       type: 'bar',
